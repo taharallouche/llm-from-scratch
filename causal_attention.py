@@ -21,7 +21,7 @@ class CausalAttention(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        batch_size, num_token, d_embed = x.shape
+        _, num_token, _ = x.shape  # batch size, num_tokens, dim_embed
 
         Q: torch.Tensor = self.W_query(x)
         K: torch.Tensor = self.W_key(x)
