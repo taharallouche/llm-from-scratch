@@ -24,6 +24,7 @@ class GPTModel(nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
 
+        self.context_size = config.context_length
         self.tok_emb = nn.Embedding(
             num_embeddings=config.vocab_size, embedding_dim=config.emb_dim
         )
@@ -138,6 +139,21 @@ class TransformerLayer(nn.Module):
         return output
 
 
+def generate_text_simple(
+    model: GPTModel, token_ids: torch.Tensor, max_new_tokens: int
+) -> torch.Tensor:
+    for _ in range(max_new_tokens):
+        input_ = token_ids[:, -model.context_size :]  # n_batch, context_length
+        logits = model(input_)  # n_batch, context_size, vocab_size
+        logits = logits[:, -1, :]  # n_batch, vocab_size (only logits of last token)
+        probabilities = torch.softmax(logits, dim=-1)  # n_batch, vocab_size
+        next_token_ids = torch.argmax(probabilities, dim=-1, keepdim=True)  # n_batch, 1
+        token_ids = torch.concat(
+            [token_ids, next_token_ids], dim=1
+        )  # n_batch, context_length + 1
+    return token_ids
+
+
 if __name__ == "__main__":
     # x = torch.randn(5, GPT_CONFIG_124M.context_length, GPT_CONFIG_124M.emb_dim)
     #
@@ -153,6 +169,6 @@ if __name__ == "__main__":
         [[1, 2, 3, 4, 5], [1, 2, 3, 4, 6]]
     )  # n_batch:2, num_tokens = 5 < context_length
 
-    output: torch.Tensor = gpt(batch)
+    with_prediction = generate_text_simple(gpt, batch, 2)
 
-    print(output.shape)
+    print(with_prediction)
