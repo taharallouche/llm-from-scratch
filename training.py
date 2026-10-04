@@ -1,3 +1,5 @@
+import logging
+from enum import Enum, auto
 from functools import partial
 from pathlib import Path
 
@@ -9,6 +11,12 @@ from dataloader import create_dataloader
 from generate import generate
 from gpt import GPTConfig, GPTModel
 from tokenizer import TOKENIZER
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+LOGGER = logging.getLogger(__name__)
 
 SMALL_CONTEXT_CONFIG = GPTConfig(context_length=256)
 
@@ -117,13 +125,18 @@ def train_model(
                 train_losses.append(train_loss)
                 val_losses.append(val_loss)
 
-                print(
+                LOGGER.debug(
                     f"Ep {epoch + 1} (Step {global_step:06d}): "
                     f"Train loss {train_loss:.3f}, "
                     f"Val loss {val_loss:.3f}"
                 )
 
     return train_losses, val_losses
+
+
+class TrainStartFrom(Enum):
+    scratch = auto()
+    checkpoint = auto()
 
 
 if __name__ == "__main__":
@@ -155,36 +168,75 @@ if __name__ == "__main__":
     val_dataloader = dataloader(txt=val_data, drop_last=False, shuffle=False)
 
     ### Training
+
+    STRATEGY = TrainStartFrom.checkpoint
+
     torch.manual_seed(42)
     model = GPTModel(SMALL_CONTEXT_CONFIG)
     optimizer = torch.optim.AdamW(params=model.parameters())
-    train_losses, val_losses = train_model(
-        train_dataloader,
-        val_dataloader,
-        model=model,
-        optimizer=optimizer,
-        n_epochs=10,
-        eval_freq=5,
-        eval_iter=5,
-        device="cpu",
-    )
+
+    match STRATEGY:
+        case TrainStartFrom.scratch:
+            LOGGER.info("Starting training from scratch")
+            train_losses, val_losses = train_model(
+                train_dataloader,
+                val_dataloader,
+                model=model,
+                optimizer=optimizer,
+                n_epochs=10,
+                eval_freq=5,
+                eval_iter=5,
+                device="cpu",
+            )
+
+        case TrainStartFrom.checkpoint:
+            LOGGER.info("Starting training from latest checkpoint")
+
+            checkpoints = torch.load("model_and_optimizer.pth")
+            model.load_state_dict(checkpoints["model"], strict=True)
+            optimizer.load_state_dict(checkpoints["optimizer"])
+
+            LOGGER.info("State dicts loaded")
+
+            train_losses, val_losses = train_model(
+                train_dataloader,
+                val_dataloader,
+                model=model,
+                optimizer=optimizer,
+                n_epochs=2,
+                eval_freq=5,
+                eval_iter=5,
+                device="cpu",
+            )
+
     print(
         "Temperature 0, top_k None",
-        generate(
-            model,
-            token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
-            max_new_tokens=2,
-            temperature=0.0,
-            top_k=None,
+        token_ids_to_text(
+            generate(
+                model,
+                token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
+                max_new_tokens=2,
+                temperature=0.0,
+                top_k=None,
+            ),
+            TOKENIZER,
         ),
     )
     print(
         "Temperature 2, top_k 5",
-        generate(
-            model,
-            token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
-            max_new_tokens=2,
-            temperature=2,
-            top_k=5,
+        token_ids_to_text(
+            generate(
+                model,
+                token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
+                max_new_tokens=2,
+                temperature=2,
+                top_k=5,
+            ),
+            TOKENIZER,
         ),
+    )
+
+    torch.save(
+        {"model": model.state_dict(), "optimizer": optimizer.state_dict()},
+        "model_and_optimizer.pth",
     )

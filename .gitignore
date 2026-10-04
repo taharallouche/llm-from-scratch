@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Artefacts
+model_and_optimizer.pth
