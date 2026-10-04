@@ -127,7 +127,7 @@ def train_model(
 
 
 if __name__ == "__main__":
-    ### Data Preparation
+    #### Data Preparation
     text_data = Path("the-verdict.txt").read_text()
     num_chars = len(text_data)
     token_ids = tiktoken.get_encoding("gpt2").encode(text_data)
@@ -152,7 +152,6 @@ if __name__ == "__main__":
         drop_last=True,
         shuffle=True,
     )
-
     val_dataloader = dataloader(txt=val_data, drop_last=False, shuffle=False)
 
     ### Training
@@ -168,4 +167,24 @@ if __name__ == "__main__":
         eval_freq=5,
         eval_iter=5,
         device="cpu",
+    )
+    print(
+        "Temperature 0, top_k None",
+        generate(
+            model,
+            token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
+            max_new_tokens=2,
+            temperature=0.0,
+            top_k=None,
+        ),
+    )
+    print(
+        "Temperature 2, top_k 5",
+        generate(
+            model,
+            token_ids=text_to_token_ids("You are the", tokenizer=TOKENIZER),
+            max_new_tokens=2,
+            temperature=2,
+            top_k=5,
+        ),
     )
