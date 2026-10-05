@@ -7,7 +7,8 @@ def generate(
     model: GPTModel,
     token_ids: torch.Tensor,  # n_batch x seq_length
     max_new_tokens: int,
-    temperature: float,
+    eos_token_id: int,
+    temperature: float = 0,
     top_k: int | None = None,
 ) -> torch.Tensor:
     """
@@ -44,5 +45,8 @@ def generate(
             )  # n_batch x 1 (seq, next token id)
 
         token_ids = torch.concat([token_ids, next_tokens_ids], dim=-1)
+
+        if next_tokens_ids.item() == eos_token_id:
+            break
 
     return token_ids
