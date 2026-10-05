@@ -9,5 +9,12 @@ wheels/
 # Virtual environments
 .venv
 
+# Personal configs
+.vscode
+
+
 # Artefacts
 model_and_optimizer.pth
+
+# Data
+data/

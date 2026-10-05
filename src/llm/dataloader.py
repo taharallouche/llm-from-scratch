@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import torch
 from tiktoken import Encoding, get_encoding
 from torch.utils.data import DataLoader, Dataset
@@ -23,10 +21,6 @@ class GPTDatasetVA(Dataset):
 
     def __getitem__(self, index: int) -> tuple[list[int], list[int]]:
         return self.input_ids[index], self.target_ids[index]
-
-
-def read_the_verdict() -> str:
-    return Path("the-verdict.txt").read_text()
 
 
 def create_dataloader(

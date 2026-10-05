@@ -1,16 +1,15 @@
 import logging
 from enum import Enum, auto
 from functools import partial
-from pathlib import Path
 
 import tiktoken
 import torch
 from torch.utils.data import DataLoader
 
-from dataloader import create_dataloader
-from generate import generate
-from gpt import GPTConfig, GPTModel
-from tokenizer import TOKENIZER
+from llm.dataloader import create_dataloader
+from llm.generate import generate
+from llm.gpt import GPTConfig, GPTModel
+from llm.utils import checkpoint_path, load_data
 
 logging.basicConfig(
     level=logging.INFO,
@@ -141,10 +140,12 @@ class TrainStartFrom(Enum):
 
 if __name__ == "__main__":
     #### Data Preparation
-    text_data = Path("the-verdict.txt").read_text()
+    text_data = load_data("the-verdict")
     num_chars = len(text_data)
-    token_ids = tiktoken.get_encoding("gpt2").encode(text_data)
-    num_tokens = len(token_ids)
+
+    TOKENIZER = tiktoken.get_encoding("gpt2")
+
+    token_ids = TOKENIZER.encode(text_data)
 
     train_ratio = 0.9
 
@@ -192,7 +193,7 @@ if __name__ == "__main__":
         case TrainStartFrom.checkpoint:
             LOGGER.info("Starting training from latest checkpoint")
 
-            checkpoints = torch.load("model_and_optimizer.pth")
+            checkpoints = torch.load(checkpoint_path("model_and_optimizer.pth"))
             model.load_state_dict(checkpoints["model"], strict=True)
             optimizer.load_state_dict(checkpoints["optimizer"])
 
@@ -203,7 +204,7 @@ if __name__ == "__main__":
                 val_dataloader,
                 model=model,
                 optimizer=optimizer,
-                n_epochs=2,
+                n_epochs=1,
                 eval_freq=5,
                 eval_iter=5,
                 device="cpu",
@@ -238,5 +239,5 @@ if __name__ == "__main__":
 
     torch.save(
         {"model": model.state_dict(), "optimizer": optimizer.state_dict()},
-        "model_and_optimizer.pth",
+        checkpoint_path("model_and_optimizer.pth"),
     )

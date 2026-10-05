@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import torch
 from torch import nn
 
-from multi_head_attention import MultiHeadAttention
+from llm.multi_head_attention import MultiHeadAttention
 
 
 @dataclass(frozen=True)
@@ -137,38 +137,3 @@ class TransformerLayer(nn.Module):
         output = x_ff + x_context
 
         return output
-
-
-def generate_text_simple(
-    model: GPTModel, token_ids: torch.Tensor, max_new_tokens: int
-) -> torch.Tensor:
-    for _ in range(max_new_tokens):
-        input_ = token_ids[:, -model.context_size :]  # n_batch, context_length
-        logits = model(input_)  # n_batch, context_size, vocab_size
-        logits = logits[:, -1, :]  # n_batch, vocab_size (only logits of last token)
-        probabilities = torch.softmax(logits, dim=-1)  # n_batch, vocab_size
-        next_token_ids = torch.argmax(probabilities, dim=-1, keepdim=True)  # n_batch, 1
-        token_ids = torch.concat(
-            [token_ids, next_token_ids], dim=1
-        )  # n_batch, context_length + 1
-    return token_ids
-
-
-if __name__ == "__main__":
-    # x = torch.randn(5, GPT_CONFIG_124M.context_length, GPT_CONFIG_124M.emb_dim)
-    #
-    # tf = TransformerLayer(config=GPT_CONFIG_124M)
-    #
-    # output: torch.Tensor = tf(x)
-    #
-    # print(output.shape)
-
-    gpt = GPTModel(config=GPT_CONFIG_124M)
-
-    batch = torch.tensor(
-        [[1, 2, 3, 4, 5], [1, 2, 3, 4, 6]]
-    )  # n_batch:2, num_tokens = 5 < context_length
-
-    with_prediction = generate_text_simple(gpt, batch, 2)
-
-    print(with_prediction)

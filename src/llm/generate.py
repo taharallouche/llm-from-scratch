@@ -1,6 +1,6 @@
 import torch
 
-from gpt import GPTModel
+from llm.gpt import GPTModel
 
 
 def generate(
@@ -11,7 +11,7 @@ def generate(
     top_k: int | None = None,
 ) -> torch.Tensor:
     """
-    Assumes
+    Assumes n_batch = 1
     """
 
     model.eval()
