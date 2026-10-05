@@ -26,6 +26,7 @@ def generate(
         if top_k is not None:
             top_k_logits, _ = torch.topk(logits, k=top_k, dim=-1, sorted=True)
 
+            # The book does not unsquueze, the dimensions would not fit though
             min_val_per_seq = top_k_logits[:, -1].unsqueeze(-1)
 
             logits = logits.where(logits < min_val_per_seq, 0)
