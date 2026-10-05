@@ -55,7 +55,7 @@ class MultiHeadAttention(nn.Module):
         self.d_head = d_out // n_head
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        n_batch, num_tokens, d_embed = x.shape
+        n_batch, num_tokens, _ = x.shape
 
         Q: torch.Tensor = self.weight_Q(x)
         K: torch.Tensor = self.weight_K(x)

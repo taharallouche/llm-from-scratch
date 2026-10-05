@@ -41,7 +41,7 @@ class GPTModel(nn.Module):
         self.out_head = nn.Linear(config.emb_dim, config.vocab_size, bias=False)
 
     def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
-        n_batch, seq_length = token_ids.shape
+        _, seq_length = token_ids.shape
 
         x: torch.Tensor = self.tok_emb(token_ids)  # n_batch x seq_length x emb_dim
         positional_embs = self.pos_emb(torch.arange(seq_length))  # seq_length x emb_dim

@@ -1,8 +1,6 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 
 @patch("llm.utils.data_path")
 def test_load_data(mock_data_path: MagicMock, tmp_path: Path) -> None:
