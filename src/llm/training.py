@@ -22,6 +22,7 @@ SMALL_CONTEXT_CONFIG = GPTConfig(context_length=256)
 
 def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> torch.Tensor:
     token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
+    # we need to specify the dtype otherwise it's torch floats and the embedding layer raises
     return torch.tensor(token_ids, dtype=torch.long).unsqueeze(0)
 
 
