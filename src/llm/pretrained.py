@@ -1,8 +1,9 @@
 import torch
 from safetensors.torch import load_file
 
-from llm.gpt import GPTConfig, GPTModel
-from llm.utils import checkpoint_path
+from llm.config import GPTConfig
+from llm.gpt import GPTModel
+from llm.io.utils import checkpoint_path
 
 
 def load_checkpoint(
@@ -28,9 +29,11 @@ def load_checkpoint(
     return new_state_dict
 
 
-GPT_124M_CONFIG = GPTConfig(drop_rate=0.0, qkv_bias=True)
-GPT_124M = GPTModel(config=GPT_124M_CONFIG)
-GPT_124M.load_state_dict(load_checkpoint("gpt2-small-124M.safetensors"))
+def pretrained_gpt_124M() -> GPTModel:
+    config = GPTConfig(drop_rate=0.0, qkv_bias=True)
+    model = GPTModel(config=config)
+    model.load_state_dict(load_checkpoint("gpt2-small-124M.safetensors"))
+    return model
 
 
 if __name__ == "__main__":
@@ -42,6 +45,8 @@ if __name__ == "__main__":
     tokenizer = get_encoding("gpt2")
     text = "I believe I can"
     token_ids = text_to_token_ids(text, tokenizer=tokenizer)
+
+    GPT_124M = pretrained_gpt_124M()
 
     GPT_124M.eval()
     output_ids = GPT_124M(token_ids)

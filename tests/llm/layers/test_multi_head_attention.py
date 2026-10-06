@@ -5,7 +5,7 @@ import torch
 @pytest.mark.parametrize("n_head", [1, 2])
 def test_MultiHeadAttention_forward_output_shape(n_head: int) -> None:
     # Given
-    from llm.multi_head_attention import MultiHeadAttention
+    from llm.layers.multi_head_attention import MultiHeadAttention
 
     inputs = torch.tensor(
         [

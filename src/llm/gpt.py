@@ -1,23 +1,9 @@
-from dataclasses import dataclass
-
 import torch
 from torch import nn
 
-from llm.multi_head_attention import MultiHeadAttention
-
-
-@dataclass(frozen=True)
-class GPTConfig:
-    vocab_size: int = 50257
-    context_length: int = 1024
-    emb_dim: int = 768
-    n_heads: int = 12
-    n_layers: int = 12
-    drop_rate: float = 0.1
-    qkv_bias: bool = False
-
-
-GPT_CONFIG_124M = GPTConfig()
+from llm.config import GPTConfig
+from llm.layers.norm import LayerNorm
+from llm.layers.transformer import TransformerLayer
 
 
 class GPTModel(nn.Module):
@@ -37,6 +23,8 @@ class GPTModel(nn.Module):
             *[TransformerLayer(config=config) for _ in range(config.n_layers)]
         )
 
+        self.emb_dim = config.emb_dim
+
         self.final_norm = LayerNorm(emb_dim=config.emb_dim)
         self.out_head = nn.Linear(config.emb_dim, config.vocab_size, bias=False)
 
@@ -54,86 +42,3 @@ class GPTModel(nn.Module):
         logits = self.out_head(x)  # n_batch x seq_length x vocab_size
 
         return logits
-
-
-class LayerNorm(nn.Module):
-    def __init__(self, emb_dim: int, eps: float = 1e-5) -> None:
-        super().__init__()
-        self.eps = eps
-
-        self.scale = nn.Parameter(torch.ones(emb_dim))
-        self.shift = nn.Parameter(torch.zeros(emb_dim))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        mean = x.mean(dim=-1, keepdim=True)
-        var = x.var(dim=-1, unbiased=True, keepdim=True)
-
-        normalized = (x - mean) / torch.sqrt(var + self.eps)
-
-        return self.scale * normalized + self.shift
-
-
-class GELU(nn.Module):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return (
-            0.5
-            * x
-            * (
-                1
-                + torch.tanh(
-                    torch.sqrt(torch.tensor(2 / torch.pi))
-                    * (x + 0.044715 * torch.pow(x, 3))
-                )
-            )
-        )
-
-
-class FeedForward(nn.Module):
-    def __init__(self, emb_dim: int) -> None:
-        super().__init__()
-        self.seq = nn.Sequential(
-            nn.Linear(emb_dim, 4 * emb_dim),
-            GELU(),
-            nn.Linear(4 * emb_dim, emb_dim),
-        )
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.seq(x)
-
-
-### Personal attempt to implement Transformer Layer based on Figure 4.13
-
-
-class TransformerLayer(nn.Module):
-    def __init__(self, config: GPTConfig) -> None:
-        super().__init__()
-
-        self.layer_norm_1 = LayerNorm(emb_dim=config.emb_dim)
-        self.mh_attention = MultiHeadAttention(
-            d_in=config.emb_dim,
-            d_out=config.emb_dim,
-            qkv_bias=config.qkv_bias,
-            context_length=config.context_length,
-            n_head=config.n_heads,
-            dropout_rate=config.drop_rate,
-        )
-        self.dropout = nn.Dropout(config.drop_rate)
-        self.layer_norm_2 = LayerNorm(emb_dim=config.emb_dim)
-        self.ff = FeedForward(emb_dim=config.emb_dim)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x_norm = self.layer_norm_1(x)
-        x_context = self.mh_attention(x_norm)
-        x_context = self.dropout(x_context)
-        x_context = x_context + x
-
-        x_norm_2 = self.layer_norm_2(x_context)
-        x_ff = self.ff(x_norm_2)
-        x_ff = self.dropout(x_ff)
-
-        output = x_ff + x_context
-
-        return output

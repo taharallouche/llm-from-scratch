@@ -2,10 +2,10 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 
-@patch("llm.utils.data_path")
+@patch("llm.io.utils.data_path")
 def test_load_data(mock_data_path: MagicMock, tmp_path: Path) -> None:
     # Given
-    from llm.utils import load_data
+    from llm.io.utils import load_data
 
     mock_data_path.return_value = tmp_path
     dataset = "test_data"

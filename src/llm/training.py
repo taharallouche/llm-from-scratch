@@ -6,10 +6,11 @@ import tiktoken
 import torch
 from torch.utils.data import DataLoader
 
-from llm.dataloader import create_dataloader
+from llm.config import GPTConfig
 from llm.generate import generate
-from llm.gpt import GPTConfig, GPTModel
-from llm.utils import checkpoint_path, load_data
+from llm.gpt import GPTModel
+from llm.io.gpt_dataloader import create_dataloader
+from llm.io.utils import checkpoint_path, load_data
 
 logging.basicConfig(
     level=logging.INFO,
