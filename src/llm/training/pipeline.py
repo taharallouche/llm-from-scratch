@@ -152,6 +152,8 @@ def pipeline(
             output_checkpoint_path,
         )
 
+    return TrainingOutput(train_loss=train_losses, validation_loss=val_losses)
+
 
 if __name__ == "__main__":
     tokenizer = tiktoken.get_encoding("gpt2")
