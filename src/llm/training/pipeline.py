@@ -14,10 +14,6 @@ from llm.io.gpt_dataloader import create_dataloader
 from llm.io.utils import checkpoint_path, load_data
 from llm.training.evaluate import compute_batch_loss, evaluate_model
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s",
-)
 LOGGER = logging.getLogger(__name__)
 
 SMALL_CONTEXT_CONFIG = GPTConfig(context_length=256)
@@ -77,7 +73,7 @@ def train_model(
     return train_losses, val_losses
 
 
-@dataclass(Frozen=True)
+@dataclass(frozen=True)
 class TrainingOutput:
     train_loss: list[float]
     validation_loss: list[float]
@@ -156,6 +152,10 @@ def pipeline(
 
 
 if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s | %(levelname)s | %(message)s",
+    )
     tokenizer = tiktoken.get_encoding("gpt2")
 
     model = GPTModel(SMALL_CONTEXT_CONFIG)

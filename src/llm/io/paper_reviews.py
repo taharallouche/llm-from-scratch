@@ -71,11 +71,11 @@ class PaperReviews(Dataset):
             for title in encoded_titles
         ]
 
-        self.labels = [paper["status"] for paper in data.iter(batch_size=1)]
+        self.labels = [paper["status"][0] for paper in data.iter(batch_size=1)]
 
     def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         return torch.tensor(self.encoded_titles[index], dtype=torch.long), torch.tensor(
-            self.labels[index], dtype=torch.int8
+            self.labels[index], dtype=torch.long
         )
 
     def __len__(self) -> int:
