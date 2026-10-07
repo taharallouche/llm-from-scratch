@@ -10,6 +10,8 @@ class GPTModel(nn.Module):
     def __init__(self, config: GPTConfig) -> None:
         super().__init__()
 
+        self.config = config
+
         self.context_size = config.context_length
         self.tok_emb = nn.Embedding(
             num_embeddings=config.vocab_size, embedding_dim=config.emb_dim
@@ -22,8 +24,6 @@ class GPTModel(nn.Module):
         self.trf_blocks = nn.Sequential(
             *[TransformerLayer(config=config) for _ in range(config.n_layers)]
         )
-
-        self.emb_dim = config.emb_dim
 
         self.final_norm = LayerNorm(emb_dim=config.emb_dim)
         self.out_head = nn.Linear(config.emb_dim, config.vocab_size, bias=False)

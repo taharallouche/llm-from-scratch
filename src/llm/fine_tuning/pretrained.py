@@ -39,8 +39,8 @@ def pretrained_gpt_124M() -> GPTModel:
 if __name__ == "__main__":
     from tiktoken import get_encoding
 
-    from llm.generate import generate
-    from llm.training import text_to_token_ids, token_ids_to_text
+    from llm.inference.generate import generate
+    from llm.training.pipeline import text_to_token_ids, token_ids_to_text
 
     tokenizer = get_encoding("gpt2")
     text = "I believe I can"

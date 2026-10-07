@@ -1,7 +1,7 @@
 from torch import nn
 
+from llm.fine_tuning.pretrained import pretrained_gpt_124M
 from llm.gpt import GPTModel
-from llm.pretrained import pretrained_gpt_124M
 
 print(pretrained_gpt_124M())
 

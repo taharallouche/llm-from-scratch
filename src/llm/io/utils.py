@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 def data_path() -> Path:
-    return Path(__file__).parents[2] / "data"
+    return Path(__file__).parents[3] / "data"
 
 
 def load_data(dataset: str) -> str:
