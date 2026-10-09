@@ -3,7 +3,7 @@ from functools import partial
 import datasets as ds
 import tiktoken
 import torch
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
 
 def load_data() -> ds.DatasetDict:
@@ -82,6 +82,21 @@ class PaperReviews(Dataset):
         return len(self.labels)
 
 
+def make_balanced_sampler(dataset: PaperReviews) -> WeightedRandomSampler:
+    labels = torch.tensor(dataset.labels)
+
+    class_counts = torch.bincount(labels)
+    class_weights = 1.0 / class_counts.float()
+
+    sample_weights = class_weights[labels]
+
+    return WeightedRandomSampler(
+        weights=sample_weights,
+        num_samples=len(labels),
+        replacement=True,
+    )
+
+
 def create_dataloaders(
     batch_size: int = 8, num_worker: int = 0, seed: int = 42
 ) -> tuple[DataLoader, DataLoader, DataLoader]:
@@ -95,7 +110,11 @@ def create_dataloaders(
         paper_reviews(test_ds),
     )
 
-    train_loader = DataLoader(train, batch_size=batch_size, num_workers=num_worker)
+    train_sampler = make_balanced_sampler(train)
+
+    train_loader = DataLoader(
+        train, batch_size=batch_size, num_workers=num_worker, sampler=train_sampler
+    )
     validation_loader = DataLoader(
         validation, batch_size=batch_size, num_workers=num_worker
     )
