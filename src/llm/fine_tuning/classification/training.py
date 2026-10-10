@@ -11,6 +11,7 @@ from llm.fine_tuning.classification.evaluate import compute_loss_batch, evaluate
 from llm.fine_tuning.pretrained import pretrained_gpt_124M
 from llm.gpt import GPTModel
 from llm.io.movie_reviews import create_dataloaders as movies_dataloader_factory
+from llm.io.paper_reviews import create_dataloaders as paper_dataloader_factory
 from llm.io.utils import checkpoint_path
 
 LOGGER = logging.getLogger(__name__)
@@ -119,5 +120,7 @@ if __name__ == "__main__":
         batch_size=10,
         n_epochs=5,
         eval_freq=10,
+        max_batches_eval=10,
         dataloader_factory=movies_dataloader_factory,
+        checkpoint_name=None,
     )
