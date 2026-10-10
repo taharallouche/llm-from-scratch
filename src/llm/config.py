@@ -11,5 +11,11 @@ class GPTConfig:
     drop_rate: float = 0.1
     qkv_bias: bool = False
 
+    def __post_init__(self) -> None:
+        if self.emb_dim % self.n_heads != 0:
+            raise ValueError(
+                f"emb_dim {self.emb_dim} cannot be divided into {self.n_heads} heads."
+            )
+
 
 GPT_CONFIG_124M = GPTConfig()
