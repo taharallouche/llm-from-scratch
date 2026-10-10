@@ -1,5 +1,6 @@
 from collections.abc import Sequence
 from functools import partial
+from typing import TypeVar
 
 import tiktoken
 import torch
@@ -10,19 +11,21 @@ from llm.gpt import GPTModel
 from llm.io.utils import checkpoint_path
 from llm.training.pipeline import text_to_token_ids
 
+Class_ = TypeVar("Class_")
 
-def classify(
+
+def classify[Class_](
     model: GPTModel,
     tokenizer: tiktoken.Encoding,
     text: str,
-    classes: Sequence[str],
+    classes: Sequence[Class_] = (0, 1),
     threshold: float = 0.5,
-) -> str:
+) -> Class_:
     token_ids = text_to_token_ids(text, tokenizer=tokenizer)
     model.eval()
     with torch.no_grad():
         output: torch.Tensor = model(token_ids)
-    last_logits = output.squeeze()[-1, :]
+    last_logits = output[0, -1, :]
     probas = torch.softmax(last_logits, dim=0)
     return classes[int(probas[1] > threshold)]
 
