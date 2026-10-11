@@ -12,3 +12,7 @@ def load_data(dataset: str) -> str:
 
 def checkpoint_path(name: str) -> Path:
     return data_path() / "artefacts" / name
+
+
+def experiments_path() -> Path:
+    return data_path() / "experiments"

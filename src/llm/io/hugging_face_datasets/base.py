@@ -4,8 +4,8 @@ from functools import partial
 from typing import ClassVar, Literal, assert_never
 
 import datasets as ds
-import tiktoken
 import torch
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader, Sampler
 from torch.utils.data import Dataset as TorchDataset
 
@@ -28,7 +28,7 @@ class HFTorchDataset(TorchDataset):
     def __init__(
         self,
         data: ds.Dataset,
-        tokenizer: tiktoken.Encoding,
+        tokenizer: Tokenizer,
         feature_name: str,
         label_name: str,
         max_length: int = 1024,
@@ -38,7 +38,7 @@ class HFTorchDataset(TorchDataset):
         self.data = data
 
         encoded_features = [
-            tokenizer.encode(sample[feature_name][0])
+            tokenizer.encode(sample[feature_name][0]).ids
             for sample in data.iter(batch_size=1)
         ]
 
@@ -87,7 +87,7 @@ class HFDataLoaderFactory[DatasetT: HFTorchDataset]:
     feature_name: ClassVar[str]
     label_name: ClassVar[str]
 
-    tokenizer: tiktoken.Encoding
+    tokenizer: Tokenizer
     max_length: int = 1024
     pad_token_id: int = 50256
     padding: Literal["left", "right"] = "left"
@@ -98,7 +98,7 @@ class HFDataLoaderFactory[DatasetT: HFTorchDataset]:
 
     def __init__(
         self,
-        tokenizer: tiktoken.Encoding,
+        tokenizer: Tokenizer,
         batch_size: int,
         max_length: int = 1024,
         pad_token_id: int = 50256,

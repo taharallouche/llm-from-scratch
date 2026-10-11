@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-import tiktoken
 import torch
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
 from llm.config import GPTConfig
@@ -19,13 +19,13 @@ LOGGER = logging.getLogger(__name__)
 SMALL_CONTEXT_CONFIG = GPTConfig(context_length=256)
 
 
-def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> torch.Tensor:
-    token_ids = tokenizer.encode(text, allowed_special={"<|endoftext|>"})
+def text_to_token_ids(text: str, tokenizer: Tokenizer) -> torch.Tensor:
+    token_ids = tokenizer.encode(text).ids
     # specify the dtype otherwise it's torch floats and the embedding layer raises
     return torch.tensor(token_ids, dtype=torch.long).unsqueeze(0)
 
 
-def token_ids_to_text(token_ids: torch.Tensor, tokenizer: tiktoken.Encoding) -> str:
+def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Tokenizer) -> str:
     return tokenizer.decode(token_ids.squeeze(0).tolist())
 
 
@@ -79,7 +79,7 @@ class TrainingOutput:
 
 def pipeline(
     text_data: str,
-    tokenizer: tiktoken.Encoding,
+    tokenizer: Tokenizer,
     train_ratio: float,
     batch_size: int,
     model: GPTModel,
@@ -154,7 +154,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s | %(levelname)s | %(message)s",
     )
-    tokenizer = tiktoken.get_encoding("gpt2")
+    tokenizer = Tokenizer.from_pretrained("gpt2")
 
     model = GPTModel(SMALL_CONTEXT_CONFIG)
     optimizer = torch.optim.AdamW(params=model.parameters())

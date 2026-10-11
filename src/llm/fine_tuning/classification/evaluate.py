@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from functools import partial
 
 import numpy as np
-import tiktoken
 import torch
 from numpy.typing import NDArray
 from sklearn.metrics import classification_report, confusion_matrix
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
 from llm.config import GPTConfig
@@ -179,7 +179,7 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict)
 
     loaders = MovieReviewsDataLoaderFactory(
-        tokenizer=tiktoken.get_encoding("gpt2"), batch_size=20
+        tokenizer=Tokenizer.from_pretrained("gpt2"), batch_size=20
     ).create()
 
     report = EvaluationReport.generate(

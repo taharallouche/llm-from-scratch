@@ -5,14 +5,13 @@ Implementing GPT-2 from scratch following Build Large Language Model from Scratc
 I did not strictly follow the book on two aspects:
 - **Code design**: modular, type-annotated, more object oriented at places, and (partially 👀) tested.
 - **Datasets**: as detailed below, I chose to use Hugging Face 🤗 datasets for fine tuning.
+- **Dependencies**: I use Hugging Face 🤗's `tokenizers` instead of tiktoken. 
 
 ## Overview
 
 ```mermaid
 graph TD
-    
 
-    
     %% Src Submodules
     Config[config.py] --> GPT[gpt.py <br/> Main Model Assembly]
     Layers[layers/ <br/> Transformer, Attention, Norm, Activations]

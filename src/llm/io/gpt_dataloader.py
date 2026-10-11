@@ -1,17 +1,16 @@
-import tiktoken
 import torch
-from tiktoken import Encoding
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader, Dataset
 
 
 class GPTDatasetVA(Dataset):
     def __init__(
-        self, txt: str, tokenizer: Encoding, max_length: int, stride: int
+        self, txt: str, tokenizer: Tokenizer, max_length: int, stride: int
     ) -> None:
         self.input_ids = []
         self.target_ids = []
 
-        token_ids = tokenizer.encode(txt)
+        token_ids = tokenizer.encode(txt).ids
 
         for i in range(0, len(token_ids) - max_length, stride):
             self.input_ids.append(torch.tensor(token_ids[i : i + max_length]))
@@ -26,7 +25,7 @@ class GPTDatasetVA(Dataset):
 
 def create_dataloader(
     txt: str,
-    tokenizer: tiktoken.Encoding,
+    tokenizer: Tokenizer,
     batch_size: int = 4,
     max_length: int = 256,
     stride: int = 128,

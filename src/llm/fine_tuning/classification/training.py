@@ -4,8 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib.pyplot as plt
-import tiktoken
 import torch
+from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
 from llm.config import GPTConfig
@@ -19,7 +19,7 @@ from llm.io.hugging_face_datasets.base import HFDataLoaderFactory
 from llm.io.hugging_face_datasets.movie_reviews import (
     MovieReviewsDataLoaderFactory,
 )
-from llm.io.utils import data_path
+from llm.io.utils import experiments_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -215,10 +215,10 @@ if __name__ == "__main__":
         eval_freq=50,
         max_batches_eval=50,
         dataloader_factory=MovieReviewsDataLoaderFactory(
-            tokenizer=tiktoken.get_encoding("gpt2"),
+            tokenizer=Tokenizer.from_pretrained("gpt2"),
             batch_size=20,
             max_length=GPTConfig().context_length,
         ),
         checkpoint_name="movie_reviews",
-        export_path=data_path() / "experiments" / "movie_reviews",
+        export_path=experiments_path() / "movie_reviews",
     )
