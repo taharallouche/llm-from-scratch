@@ -2,6 +2,38 @@
 
 Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assisstant has been used during the exercice: it's more instructive and way more fun done this way !
 
+I did not strictly follow the book on two aspects:
+- **Code design**: modular, type-annotated, more object oriented at places, and (partially 👀) tested.
+- **Datasets**: as detailed below, I chose to use Hugging Face 🤗 datasets for fine tuning.
+
+## Overview
+
+```mermaid
+graph TD
+    
+
+    
+    %% Src Submodules
+    Config[config.py] --> GPT[gpt.py <br/> Main Model Assembly]
+    Layers[layers/ <br/> Transformer, Attention, Norm, Activations]
+    IO[io/ <br/> DataLoaders & HF Datasets]
+    Training[training/ <br/> Training Pipeline & Evaluation]
+    FineTuning[fine_tuning/ <br/> Classification, Pretrained Models]
+    Inference[inference/ <br/> Generation Pipeline]
+
+    
+    Tests[tests/ <br/> Unit Testing]
+    Data[data/ <br/> .gitignored Artifacts & Experiments]
+
+    %% Flow connections
+    Layers --> GPT
+    GPT --> Training
+    IO --> Training
+    IO --> FineTuning
+    GPT --> FineTuning
+    GPT --> Inference
+```
+
 ## Fine-Tuning for Classification: Alternative Dataset and Methodology
 
 [WIP]
