@@ -1,5 +1,5 @@
 import pytest
-import tiktoken
+from tokenizers import Tokenizer
 
 from llm.config import GPTConfig
 from llm.gpt import GPTModel
@@ -16,5 +16,5 @@ def small_model(small_model_config: GPTConfig) -> GPTModel:
 
 
 @pytest.fixture
-def tokenizer() -> tiktoken.Encoding:
-    return tiktoken.get_encoding("gpt2")
+def tokenizer() -> Tokenizer:
+    return Tokenizer.from_pretrained("gpt2")

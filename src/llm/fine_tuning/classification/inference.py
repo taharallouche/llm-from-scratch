@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from functools import partial
 
-import tiktoken
 import torch
+from tokenizers import Tokenizer
 
 from llm.config import GPTConfig
 from llm.fine_tuning.classification.classifier import setup_binary_classification_model
@@ -13,7 +13,7 @@ from llm.training.pipeline import text_to_token_ids
 
 def classify[Class_](
     model: GPTModel,
-    tokenizer: tiktoken.Encoding,
+    tokenizer: Tokenizer,
     text: str,
     classes: Sequence[Class_] = (0, 1),  # type: ignore[assignment]
     threshold: float = 0.5,
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     state_dict = torch.load(checkpoint_path("movie_classifier_left_padded.pth"))
     model.load_state_dict(state_dict)
 
-    tokenizer = tiktoken.get_encoding("gpt2")
+    tokenizer = Tokenizer.from_pretrained("gpt2")
 
     classify_ = partial(
         classify,
@@ -45,5 +45,5 @@ if __name__ == "__main__":
         threshold=0.5,
     )
 
-    text = "Sweet"
+    text = "Bad scenario"
     print(f"{text}: {classify_(text=text)}")

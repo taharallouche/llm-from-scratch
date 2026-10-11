@@ -1,11 +1,11 @@
-import tiktoken
+from tokenizers import Tokenizer
 
 from llm.fine_tuning.classification.classifier import setup_binary_classification_model
 from llm.gpt import GPTModel
 
 
 def test_classify_can_handle_one_token_input(
-    small_model: GPTModel, tokenizer: tiktoken.Encoding
+    small_model: GPTModel, tokenizer: Tokenizer
 ) -> None:
     # Given
     from llm.fine_tuning.classification.inference import classify
