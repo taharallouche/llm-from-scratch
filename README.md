@@ -61,12 +61,12 @@ can be overfitting to the training set. This is also visible in the train/valida
 It might be interesting to tune the optimizer's weight decay, setup early stopping strategies
 or to train on fewer epochs.
 
-![Fine Tuning Losses](image.png)
+<img width="500" height="300" alt="image" src="https://github.com/user-attachments/assets/5d6ea8fb-8c9d-486b-9e5e-e45012c2e9bc" />
+
 
 
 #### Fine Tuning Configuration
 
-"n_epochs": 3, "batch_size": 20, "max_batches_eval": 50, "eval_freq": 50, "learning_rate": 0.001
 
 | Parameter | Value |
 |:-----:|:---------:|
