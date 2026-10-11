@@ -15,7 +15,7 @@ def test_classify_can_handle_one_token_input(
     classes = [0, 1]
 
     # When
-    output = classify(model=model, tokenizer=tokenizer, text=text)
+    output: int = classify(model=model, tokenizer=tokenizer, text=text)
 
     # Then
     assert output in classes

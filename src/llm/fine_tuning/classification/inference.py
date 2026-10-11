@@ -11,8 +11,6 @@ from llm.gpt import GPTModel
 from llm.io.utils import checkpoint_path
 from llm.training.pipeline import text_to_token_ids
 
-Class_ = TypeVar("Class_")
-
 
 def classify[Class_](
     model: GPTModel,
