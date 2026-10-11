@@ -1,7 +1,7 @@
 [project]
 name = "llm-from-scratch"
 version = "0.1.0"
-description = "Add your description here"
+description = "Implemeneting GPT 2 from scratch."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -24,10 +24,27 @@ packages = ["src/llm"]
 [dependency-groups]
 dev = [
     "mypy>=2.4.0",
+    "pre-commit>=4.6.2",
     "pytest>=9.1.1",
+    "ruff>=0.17.0",
 ]
 
 
 [[tool.mypy.overrides]]
-module = ["datasets", "datasets.*", "sklearn.metrics", "sklear.metrics.*"]
+module = ["datasets", "datasets.*", "sklearn.metrics", "sklearn.metrics.*"]
 ignore_missing_imports = true
+
+
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # Pyflakes: undefined names, unused imports, etc.
+    "I",    # isort: import sorting
+    "UP",   # pyupgrade: modern Python syntax
+    "B",    # flake8-bugbear: likely bugs and design issues
+]

@@ -45,7 +45,7 @@ class HFTorchDataset(TorchDataset):
         longest_sequence = max(len(encoded) for encoded in encoded_features)
         self.max_length = min(max_length, longest_sequence)
 
-        # TODO: pad in a collate_fn in the dataloader. Takes the longest seq in the batch
+        # TODO: pad in collate_fn in the dataloader. Takes the longest seq in the batch
         match padding:
             case "right":
                 encoded_features = [

@@ -137,7 +137,7 @@ def train_classifier(
                     num_batches=max_batches_eval,
                 )
                 LOGGER.info(
-                    f"Train Loss: {train_loss.item()}, Validation Loss: {validation_loss.item()}."
+                    f"Train Loss: {train_loss}, Validation Loss: {validation_loss}."
                 )
 
                 train_losses.append(train_loss)

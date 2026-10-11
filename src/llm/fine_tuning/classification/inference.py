@@ -1,6 +1,5 @@
 from collections.abc import Sequence
 from functools import partial
-from typing import TypeVar
 
 import tiktoken
 import torch
