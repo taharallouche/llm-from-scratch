@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from functools import partial
 
 import numpy as np
+import tiktoken
 import torch
 from numpy.typing import NDArray
 from sklearn.metrics import classification_report, confusion_matrix
@@ -12,7 +13,7 @@ from llm.fine_tuning.classification.classifier import (
     setup_binary_classification_model,
 )
 from llm.gpt import GPTModel
-from llm.io.movie_reviews import create_dataloaders
+from llm.io.hugging_face_datasets.movie_reviews import MovieReviewsDataLoaderFactory
 from llm.io.utils import checkpoint_path
 
 
@@ -174,13 +175,18 @@ if __name__ == "__main__":
         model=GPTModel(GPTConfig(drop_rate=0.0, qkv_bias=True)),
     )
 
-    state_dict = torch.load(checkpoint_path("movie_classifier_left_padded.pth"))
+    state_dict = torch.load(checkpoint_path("movies_review_2_epochs.pth"))
     model.load_state_dict(state_dict)
 
-    train, validation, test = create_dataloaders()
+    loaders = MovieReviewsDataLoaderFactory(
+        tokenizer=tiktoken.get_encoding("gpt2"), batch_size=20
+    ).create()
 
     report = EvaluationReport.generate(
-        model, train_loader=train, validation_loader=validation, test_loader=test
+        model,
+        train_loader=loaders.train,
+        validation_loader=loaders.validation,
+        test_loader=loaders.test,
     )
 
     print(report)

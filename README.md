@@ -16,6 +16,9 @@ datasets:
 - For the classification fine tuning task, left-padding significantly outperformed right-padding.
 This might be related to our methodology that only considers the last logits, which would be the pad token
 in the right-padded shorter sequences.
+- Don't forget to shuffle the training set ! Movies Review dataset stacks all positive reviews together
+followed by the negative reviews. The model learned very fast to always output 1 during the first batches,
+then the loss exploded as soon as it encountered the negative batches.
 
 
 ### Evaluation Records
