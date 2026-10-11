@@ -39,16 +39,16 @@ def compute_loss(
     max_batches: int | None = None,
     device="cpu",
     class_weights: torch.Tensor | None = None,
-) -> torch.Tensor:
+) -> float:
 
-    total_losses = 0
+    total_losses = 0.0
 
     for batches_seen, (input_batch, target_batch) in enumerate(dataloader, start=1):
         batch_loss = compute_loss_batch(
             input_batch, target_batch, model, device, class_weights=class_weights
         )
 
-        total_losses += batch_loss
+        total_losses += batch_loss.item()
 
         if max_batches and batches_seen == max_batches:
             break

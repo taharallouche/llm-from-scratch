@@ -24,7 +24,7 @@ def compute_batch_loss(
 def compute_loss(
     dataloader: DataLoader, model: GPTModel, device, num_batches: int | None = None
 ) -> float:
-    total_loss = 0
+    total_loss = 0.0
     batch_count = 0
     for iter, (input_batch, target_batch) in enumerate(dataloader):
         if num_batches is not None and iter == num_batches:

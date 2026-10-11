@@ -43,12 +43,13 @@ class MultiHeadAttention(nn.Module):
         # attention_scores: n_batch x n_head x num_tokens x num_tokens
         attention_scores = Q @ K.transpose(-2, -1)
         masked_scores = attention_scores.masked_fill(
-            self.mask.bool()[:num_tokens, :num_tokens], -torch.inf
+            self.mask.bool()[:num_tokens, :num_tokens],  # type: ignore[operator]
+            -torch.inf,
         )
         attention_weights = torch.softmax(masked_scores / self.d_head**0.5, dim=-1)
-        attention_weights: torch.Tensor = self.dropout(attention_weights)
+        attention_weights_dp: torch.Tensor = self.dropout(attention_weights)
 
-        context = attention_weights @ V
+        context = attention_weights_dp @ V
 
         context = (
             context.transpose(1, 2).contiguous().view(n_batch, num_tokens, self.d_out)

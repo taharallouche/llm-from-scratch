@@ -18,7 +18,7 @@ def classify[Class_](
     model: GPTModel,
     tokenizer: tiktoken.Encoding,
     text: str,
-    classes: Sequence[Class_] = (0, 1),
+    classes: Sequence[Class_] = (0, 1),  # type: ignore[assignment]
     threshold: float = 0.5,
 ) -> Class_:
     token_ids = text_to_token_ids(text, tokenizer=tokenizer)

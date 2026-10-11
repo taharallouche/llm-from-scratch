@@ -25,9 +25,7 @@ def text_to_token_ids(text: str, tokenizer: tiktoken.Encoding) -> torch.Tensor:
     return torch.tensor(token_ids, dtype=torch.long).unsqueeze(0)
 
 
-def token_ids_to_text(
-    token_ids: torch.Tensor, tokenizer: tiktoken.Encoding
-) -> list[str]:
+def token_ids_to_text(token_ids: torch.Tensor, tokenizer: tiktoken.Encoding) -> str:
     return tokenizer.decode(token_ids.squeeze(0).tolist())
 
 
@@ -93,7 +91,7 @@ def pipeline(
     output_checkpoint_path: Path | None = None,
     seed: int = 42,
     device="cpu",
-) -> None:
+) -> TrainingOutput:
 
     num_chars = len(text_data)
     split_idx = int(train_ratio * num_chars)

@@ -6,7 +6,7 @@ from llm.io.hugging_face_datasets.base import HFDataLoaderFactory, HFTorchDatase
 class MovieReviews(HFTorchDataset): ...
 
 
-class MovieReviewsDataLoaderFactory(HFDataLoaderFactory):
+class MovieReviewsDataLoaderFactory(HFDataLoaderFactory[MovieReviews]):
     hf_dataset_path: ClassVar[str] = "cornell-movie-review-data/rotten_tomatoes"
     hf_data_files: ClassVar[None] = None
     dataset_class: ClassVar[type[MovieReviews]] = MovieReviews

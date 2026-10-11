@@ -78,17 +78,17 @@ class HFTorchDataset(TorchDataset):
         return len(self.labels)
 
 
-class HFDataLoaderFactory:
+class HFDataLoaderFactory[DatasetT: HFTorchDataset]:
     hf_dataset_path: ClassVar[str]
     hf_data_files: ClassVar[
         str | Sequence[str] | Mapping[str, str | Sequence[str]] | None
     ]
-    dataset_class: ClassVar[type[HFTorchDataset]]
+    dataset_class: ClassVar[type[DatasetT]]
     feature_name: ClassVar[str]
     label_name: ClassVar[str]
 
     tokenizer: tiktoken.Encoding
-    max_length: int | None = None
+    max_length: int = 1024
     pad_token_id: int = 50256
     padding: Literal["left", "right"] = "left"
     seed: int = 42
@@ -100,7 +100,7 @@ class HFDataLoaderFactory:
         self,
         tokenizer: tiktoken.Encoding,
         batch_size: int,
-        max_length: int | None = None,
+        max_length: int = 1024,
         pad_token_id: int = 50256,
         padding: Literal["left", "right"] = "left",
         seed: int = 42,
@@ -158,7 +158,7 @@ class HFDataLoaderFactory:
         """
         return raw
 
-    def _sampler(self, dataset: TorchDataset) -> Sampler | None:
+    def _sampler(self, dataset: DatasetT) -> Sampler | None:
         """
         To be overwritten by child classes if custom sampling is needed.
         """

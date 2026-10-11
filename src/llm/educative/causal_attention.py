@@ -32,7 +32,8 @@ class CausalAttention(nn.Module):
         attention_scores = Q @ K.transpose(-2, -1)
 
         attention_scores.masked_fill_(
-            self.mask.bool()[:num_token, :num_token], -torch.inf
+            self.mask.bool()[:num_token, :num_token],  # type: ignore[operator]
+            -torch.inf,
         )
         attention_weights = torch.softmax(attention_scores / d_k**0.5, dim=1)
 

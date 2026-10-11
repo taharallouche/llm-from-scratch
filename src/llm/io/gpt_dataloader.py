@@ -1,6 +1,6 @@
 import tiktoken
 import torch
-from tiktoken import Encoding, get_encoding
+from tiktoken import Encoding
 from torch.utils.data import DataLoader, Dataset
 
 
@@ -20,7 +20,7 @@ class GPTDatasetVA(Dataset):
     def __len__(self) -> int:
         return len(self.input_ids)
 
-    def __getitem__(self, index: int) -> tuple[list[int], list[int]]:
+    def __getitem__(self, index: int) -> tuple[torch.Tensor, torch.Tensor]:
         return self.input_ids[index], self.target_ids[index]
 
 

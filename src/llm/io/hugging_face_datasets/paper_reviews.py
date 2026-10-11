@@ -10,7 +10,7 @@ from llm.io.hugging_face_datasets.base import HFDataLoaderFactory, HFTorchDatase
 class PaperReviewsDataset(HFTorchDataset): ...
 
 
-class PaperReviewsDataLoaderFactory(HFDataLoaderFactory):
+class PaperReviewsDataLoaderFactory(HFDataLoaderFactory[PaperReviewsDataset]):
     hf_dataset_path: ClassVar[str] = "Vidushee/iclr-papers-with-code-1k"
     hf_data_files: ClassVar[str] = "all_1051_papers.jsonl"
     dataset_class: ClassVar[type[PaperReviewsDataset]] = PaperReviewsDataset
@@ -62,7 +62,7 @@ class PaperReviewsDataLoaderFactory(HFDataLoaderFactory):
         sample_weights = class_weights[labels]
 
         return WeightedRandomSampler(
-            weights=sample_weights,
+            weights=sample_weights.tolist(),
             num_samples=len(labels),
             replacement=True,
         )

@@ -34,7 +34,7 @@ class FineTuningLosses:
 class FineTuningLogs:
     n_epochs: int
     batch_size: int
-    max_batches_eval: int
+    max_batches_eval: int | None
     eval_freq: int
     learning_rate: float
     checkpoint_name: str
@@ -212,8 +212,8 @@ if __name__ == "__main__":
     finetuning_logs = pipeline(
         model=model,
         n_epochs=3,
-        eval_freq=10,
-        max_batches_eval=15,
+        eval_freq=50,
+        max_batches_eval=50,
         dataloader_factory=MovieReviewsDataLoaderFactory(
             tokenizer=tiktoken.get_encoding("gpt2"),
             batch_size=20,
