@@ -36,7 +36,6 @@ graph TD
 
 ## Fine-Tuning for Classification: Alternative Dataset and Methodology
 
-[WIP]
 
 For this section I deliberately choose to diverge from the book: I will rely on Hugging Face's Open Source
 datasets:
@@ -58,9 +57,23 @@ then the loss exploded as soon as it encountered the negative batches.
 #### Movie Reviews
 
 **Notes**: Comparing the Train, Validation, Test results above, we can see that the model
-can be overfitting to the training set. After investigation, I noticed that I did not configure
-the weight decay for the AdamW optimizer. Also investigating the validation loss evolution, it might be
-interesting to setup early stopping.
+can be overfitting to the training set. This is also visible in the train/validation loss gap evolution. 
+It might be interesting to tune the optimizer's weight decay, setup early stopping strategies
+or to train on fewer epochs.
+
+![Fine Tuning Losses](image.png)
+
+
+#### Fine Tuning Configuration
+
+"n_epochs": 3, "batch_size": 20, "max_batches_eval": 50, "eval_freq": 50, "learning_rate": 0.001
+
+| Parameter | Value |
+|:-----:|:---------:|
+| **n_epochs** | 3 |
+| **batch_size** | 20 |
+| **AdamW learning rate** | 0.001 |
+
 
 ##### Training Set
 
