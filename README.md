@@ -93,7 +93,7 @@ or to train on fewer epochs.
 | Device | Duration |
 |:-----:|:---------:|
 | **GPU T4** | 150.5 s |
-| **CPU** | - |
+| **CPU** | 50m 14s |
 
 
 
