@@ -1,12 +1,17 @@
 # GPT-2 From Scratch (and Beyond)
 
-Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assisstant has been used during the exercice: it's more instructive and way more fun done this way !
+[![CI](https://github.com/taharallouche/llm-from-scratch/actions/workflows/ci.yml/badge.svg)](https://github.com/taharallouche/llm-from-scratch/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
+![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
+
+Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assistant has been used during the exercise: it's more instructive and way more fun done this way !
 
 The repo goes beyond the book on these aspects:
 - **Code design**: modular, type-annotated, more object oriented at places, and (partially 👀) tested.
 - **Datasets**: as detailed below, uses Hugging Face 🤗 datasets for fine tuning.
 - **Dependencies**: uses Hugging Face 🤗's `tokenizers` instead of tiktoken.
-- **Secutity**: tensor imports and exports use `safetensors` instead of `pickle`.
+- **Security**: tensor imports and exports use `safetensors` instead of `pickle`.
 
 
 ## Overview
@@ -35,6 +40,15 @@ graph TD
     GPT --> Inference
 ```
 
+## Lessons Learned
+These are some of the issues that I faced and spent the most time debugging:
+- Although the book implements right-padding, for the classification fine tuning task, left-padding significantly outperformed it.
+This might be related to our methodology that only considers the last logits, which would be the pad token
+in the right-padded shorter sequences.
+- Don't forget to shuffle the training set ! Movies Review dataset stacks all positive reviews together
+followed by the negative reviews. The model learned very fast to always output 1 during the first batches,
+then the loss exploded as soon as it encountered the negative batches.
+
 ## Fine-Tuning for Classification: Alternative Dataset and Methodology
 
 
@@ -42,15 +56,6 @@ For this section I deliberately choose to diverge from the book: I will rely on 
 datasets:
 - Classification on balanced data: https://huggingface.co/datasets/cornell-movie-review-data/rotten_tomatoes
 - Classification on unbalanced data: https://huggingface.co/datasets/Vidushee/iclr-papers-with-code-1k 
-
-
-### Lessons Learned
-- For the classification fine tuning task, left-padding significantly outperformed right-padding.
-This might be related to our methodology that only considers the last logits, which would be the pad token
-in the right-padded shorter sequences.
-- Don't forget to shuffle the training set ! Movies Review dataset stacks all positive reviews together
-followed by the negative reviews. The model learned very fast to always output 1 during the first batches,
-then the loss exploded as soon as it encountered the negative batches.
 
 
 ### Evaluation Records
@@ -83,7 +88,7 @@ or to train on fewer epochs.
 | **Output Head** | Yes |
 
 
-##### Ressources
+##### Resources
 
 | Device | Duration |
 |:-----:|:---------:|
