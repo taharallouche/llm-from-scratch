@@ -91,7 +91,7 @@ def pipeline(
     checkpoint_path: Path | None = None,
     output_checkpoint_path: Path | None = None,
     seed: int = 42,
-    device="cpu",
+    device: str | torch.device = "cpu",
 ) -> TrainingOutput:
 
     num_chars = len(text_data)

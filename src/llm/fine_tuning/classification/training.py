@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -10,6 +11,7 @@ from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
 from llm.config import GPTConfig
+from llm.device import get_device
 from llm.fine_tuning.classification.classifier import (
     setup_binary_classification_fine_tuning,
 )
@@ -39,11 +41,12 @@ class FineTuningLogs:
     eval_freq: int
     learning_rate: float
     checkpoint_name: str
+    training_time: float
 
     losses: FineTuningLosses
 
     def save_run_metadata(self, folder: Path) -> None:
-        file_path = folder / "run_metdata.json"
+        file_path = folder / "run_metadata.json"
         file_path.touch()
 
         with open(file_path, mode="w+") as f:
@@ -55,6 +58,7 @@ class FineTuningLogs:
                     "max_batches_eval": self.max_batches_eval,
                     "eval_freq": self.eval_freq,
                     "learning_rate": self.learning_rate,
+                    "training_time": self.training_time,
                 },
                 f,
             )
@@ -104,16 +108,19 @@ def train_classifier(
     n_epochs: int,
     eval_freq: int,
     max_batches_eval: int | None = None,
-    device="cpu",
-):
+    device: str | torch.device = "cpu",
+) -> tuple[FineTuningLosses, float]:
+    model.to(device)
 
     total_batches = len(train_loader)
 
     train_losses = []
     validation_losses = []
 
+    start_time = time.perf_counter()
+
     for epoch in range(n_epochs):
-        LOGGER.info(f"Epoch {epoch} out of {n_epochs}.")
+        LOGGER.info(f"Epoch {epoch + 1} out of {n_epochs}.")
         for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
             model.train()
             LOGGER.info(f"Batch {i} out of {total_batches}")
@@ -146,7 +153,15 @@ def train_classifier(
 
     LOGGER.info("Fine-tuning complete !")
 
-    return FineTuningLosses(train=train_losses, validation=validation_losses)
+    if str(device).startswith("cuda"):
+        torch.cuda.synchronize()
+
+    end_time = time.perf_counter()
+    elapsed_seconds = end_time - start_time
+
+    return FineTuningLosses(
+        train=train_losses, validation=validation_losses
+    ), elapsed_seconds
 
 
 def pipeline(
@@ -156,7 +171,7 @@ def pipeline(
     eval_freq: int,
     max_batches_eval: int | None = None,
     checkpoint_name: str | None = None,
-    device="cpu",
+    device: str | torch.device = "cpu",
     plot_losses: bool = False,
     export_path: Path | None = None,
 ) -> FineTuningLogs:
@@ -166,7 +181,7 @@ def pipeline(
 
     dataloader_split = dataloader_factory.create()
 
-    losses = train_classifier(
+    losses, training_time = train_classifier(
         model,
         optimizer,
         dataloader_split.train,
@@ -185,6 +200,7 @@ def pipeline(
         eval_freq=eval_freq,
         learning_rate=learning_rate,
         losses=losses,
+        training_time=training_time,
     )
 
     if export_path:
@@ -210,6 +226,10 @@ if __name__ == "__main__":
         final_norm_layer="final_norm",
     )
 
+    device = get_device()
+
+    print("device: ", device)
+
     finetuning_logs = pipeline(
         model=model,
         n_epochs=3,
@@ -220,6 +240,9 @@ if __name__ == "__main__":
             batch_size=20,
             max_length=GPTConfig().context_length,
         ),
-        checkpoint_name="movie_reviews",
-        export_path=experiments_path() / "movie_reviews",
+        checkpoint_name="movie_reviews_gpu",
+        export_path=experiments_path() / "movie_reviews_gpu",
+        device=device,
     )
+
+    print("training time in s", finetuning_logs.training_time)

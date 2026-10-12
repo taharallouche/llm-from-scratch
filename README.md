@@ -65,7 +65,7 @@ or to train on fewer epochs.
 
 
 
-#### Fine Tuning Configuration
+##### Fine Tuning Configuration
 
 
 | Parameter | Value |
@@ -82,9 +82,16 @@ or to train on fewer epochs.
 | **Output Head** | Yes |
 
 
+##### Ressources
+
+| Device | Duration |
+|:-----:|:---------:|
+| **GPU T4** | 150.5 s |
+| **CPU** | - |
 
 
-##### Training Set
+
+##### Training Set Metrics
 
 
 | Class | Precision | Recall | F1-score | Support |
@@ -103,7 +110,7 @@ or to train on fewer epochs.
 
 ---
 
-##### Validation Set
+##### Validation Set Metrics
 
 
 | Class | Precision | Recall | F1-score | Support |
@@ -122,7 +129,7 @@ or to train on fewer epochs.
 
 ---
 
-##### Test Set
+##### Test Set Metrics
 
 
 | Class | Precision | Recall | F1-score | Support |
