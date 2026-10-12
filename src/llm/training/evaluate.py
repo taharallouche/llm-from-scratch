@@ -51,7 +51,7 @@ def evaluate_model(
     train_dataloader: DataLoader,
     val_dataloader: DataLoader,
     eval_iter: int | None = None,
-    device="cpu",
+    device: str | torch.device = "cpu",
 ) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():

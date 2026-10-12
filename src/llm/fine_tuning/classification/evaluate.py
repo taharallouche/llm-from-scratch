@@ -22,9 +22,14 @@ def compute_loss_batch(
     input_batch: torch.Tensor,
     target_batch: torch.Tensor,
     model: GPTModel,
-    device="cpu",
+    device: str | torch.device = "cpu",
     class_weights: torch.Tensor | None = None,
 ) -> torch.Tensor:
+    input_batch = input_batch.to(device)
+    target_batch = target_batch.to(device)
+    if class_weights is not None:
+        class_weights = class_weights.to(device)
+
     logits = model(input_batch)  # n_batch x seq_length x 2
 
     last_logits = logits[:, -1, :]  # n_batch x 2
@@ -38,7 +43,7 @@ def compute_loss(
     dataloader: DataLoader,
     model: GPTModel,
     max_batches: int | None = None,
-    device="cpu",
+    device: str | torch.device = "cpu",
     class_weights: torch.Tensor | None = None,
 ) -> float:
 
@@ -79,7 +84,7 @@ def evaluate_model(
 def get_predictions_and_targets(
     dataloader: DataLoader,
     model: GPTModel,
-    device="cpu",
+    device: str | torch.device = "cpu",
     num_batches=None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     model.eval()
@@ -120,7 +125,7 @@ class DatasetEvaluation:
         model: GPTModel,
         dataloader: DataLoader,
         num_batches: int | None = None,
-        device="cpu",
+        device: str | torch.device = "cpu",
     ) -> "DatasetEvaluation":
         predictions, targets = get_predictions_and_targets(
             dataloader=dataloader, model=model, num_batches=num_batches, device=device
@@ -145,7 +150,7 @@ class EvaluationReport:
         validation_loader,
         test_loader,
         num_batches: int | None = None,
-        device="cpu",
+        device: str | torch.device = "cpu",
     ) -> "EvaluationReport":
 
         eval_compute = partial(

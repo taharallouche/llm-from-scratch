@@ -32,7 +32,9 @@ class GPTModel(nn.Module):
         _, seq_length = token_ids.shape
 
         x: torch.Tensor = self.tok_emb(token_ids)  # n_batch x seq_length x emb_dim
-        positional_embs = self.pos_emb(torch.arange(seq_length))  # seq_length x emb_dim
+        positional_embs = self.pos_emb(
+            torch.arange(seq_length, device=token_ids.device)
+        )  # seq_length x emb_dim
 
         x = x + positional_embs
         x = self.drop_emb(x)
