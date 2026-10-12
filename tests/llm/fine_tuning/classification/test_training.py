@@ -25,7 +25,7 @@ def dataset() -> DummyDataset:
 
 
 @pytest.fixture
-def dataloader(dataset: DummyDataset) -> DummyDataset:
+def dataloader(dataset: DummyDataset) -> DataLoader:
     return DataLoader(dataset=dataset, batch_size=5, shuffle=True, num_workers=0)
 
 
