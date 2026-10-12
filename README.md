@@ -1,4 +1,4 @@
-# GPT-2 From Scratch
+# GPT-2 From Scratch (and Beyond)
 
 Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assisstant has been used during the exercice: it's more instructive and way more fun done this way !
 
@@ -7,6 +7,7 @@ The repo goes beyond the book on these aspects:
 - **Datasets**: as detailed below, uses Hugging Face 🤗 datasets for fine tuning.
 - **Dependencies**: uses Hugging Face 🤗's `tokenizers` instead of tiktoken.
 - **Secutity**: tensor imports and exports use `safetensors` instead of `pickle`.
+
 
 ## Overview
 
