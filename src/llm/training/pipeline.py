@@ -4,6 +4,7 @@ from functools import partial
 from pathlib import Path
 
 import torch
+from safetensors.torch import load_model, save_model
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
@@ -119,9 +120,9 @@ def pipeline(
     else:
         LOGGER.info("Starting training from latest checkpoint")
 
-        checkpoints = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoints["model"], strict=True)
-        optimizer.load_state_dict(checkpoints["optimizer"])
+        load_model(model, str(checkpoint_path / "model.safetensors"))
+        optimizer_checkpoint = torch.load(checkpoint_path / "optimizer.pth")
+        optimizer.load_state_dict(optimizer_checkpoint)
 
         LOGGER.info("State dicts loaded")
 
@@ -141,10 +142,8 @@ def pipeline(
     if output_checkpoint_path:
         LOGGER.info("Exporting checkpoint")
 
-        torch.save(
-            {"model": model.state_dict(), "optimizer": optimizer.state_dict()},
-            output_checkpoint_path,
-        )
+        save_model(model, str(output_checkpoint_path / "model.safetensors"))
+        torch.save(optimizer.state_dict(), output_checkpoint_path / "optimizer.pth")
 
     return TrainingOutput(train_loss=train_losses, validation_loss=val_losses)
 
@@ -161,7 +160,7 @@ if __name__ == "__main__":
 
     text_data = load_data("the-verdict")
 
-    checkpoint_file_path = checkpoint_path("model_and_optimizer.pth")
+    checkpoint_file_path = checkpoint_path("model_and_optimizer.safetensors")
 
     pipeline(
         text_data=text_data,

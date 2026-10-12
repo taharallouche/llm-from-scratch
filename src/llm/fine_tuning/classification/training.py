@@ -5,6 +5,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
+from safetensors.torch import save_model
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
 
@@ -192,7 +193,7 @@ def pipeline(
         finetuning_logs.save_run_metadata(export_path)
 
         if checkpoint_name:
-            torch.save(model.state_dict(), export_path / f"{checkpoint_name}.pth")
+            save_model(model, str(export_path / f"{checkpoint_name}.safetensors"))
 
     return finetuning_logs
 

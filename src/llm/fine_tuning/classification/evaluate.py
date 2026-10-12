@@ -4,6 +4,7 @@ from functools import partial
 import numpy as np
 import torch
 from numpy.typing import NDArray
+from safetensors.torch import load_model
 from sklearn.metrics import classification_report, confusion_matrix
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
@@ -14,14 +15,14 @@ from llm.fine_tuning.classification.classifier import (
 )
 from llm.gpt import GPTModel
 from llm.io.hugging_face_datasets.movie_reviews import MovieReviewsDataLoaderFactory
-from llm.io.utils import checkpoint_path
+from llm.io.utils import experiments_path
 
 
 def compute_loss_batch(
     input_batch: torch.Tensor,
     target_batch: torch.Tensor,
     model: GPTModel,
-    device,
+    device="cpu",
     class_weights: torch.Tensor | None = None,
 ) -> torch.Tensor:
     logits = model(input_batch)  # n_batch x seq_length x 2
@@ -175,8 +176,9 @@ if __name__ == "__main__":
         model=GPTModel(GPTConfig(drop_rate=0.0, qkv_bias=True)),
     )
 
-    state_dict = torch.load(checkpoint_path("movies_review_2_epochs.pth"))
-    model.load_state_dict(state_dict)
+    load_model(
+        model, experiments_path() / "movie_reviews" / "movie_reviews.safetensors"
+    )
 
     loaders = MovieReviewsDataLoaderFactory(
         tokenizer=Tokenizer.from_pretrained("gpt2"), batch_size=20

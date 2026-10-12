@@ -2,12 +2,13 @@ from collections.abc import Sequence
 from functools import partial
 
 import torch
+from safetensors.torch import load_model
 from tokenizers import Tokenizer
 
 from llm.config import GPTConfig
 from llm.fine_tuning.classification.classifier import setup_binary_classification_model
 from llm.gpt import GPTModel
-from llm.io.utils import checkpoint_path
+from llm.io.utils import experiments_path
 from llm.training.pipeline import text_to_token_ids
 
 
@@ -32,8 +33,9 @@ if __name__ == "__main__":
         model=GPTModel(GPTConfig(drop_rate=0.0, qkv_bias=True)),
     )
 
-    state_dict = torch.load(checkpoint_path("movie_classifier_left_padded.pth"))
-    model.load_state_dict(state_dict)
+    load_model(
+        model, experiments_path() / "movie_reviews" / "movie_reviews.safetensors"
+    )
 
     tokenizer = Tokenizer.from_pretrained("gpt2")
 

@@ -2,10 +2,11 @@
 
 Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assisstant has been used during the exercice: it's more instructive and way more fun done this way !
 
-I did not strictly follow the book on two aspects:
+The repo goes beyond the book on these aspects:
 - **Code design**: modular, type-annotated, more object oriented at places, and (partially 👀) tested.
-- **Datasets**: as detailed below, I chose to use Hugging Face 🤗 datasets for fine tuning.
-- **Dependencies**: I use Hugging Face 🤗's `tokenizers` instead of tiktoken. 
+- **Datasets**: as detailed below, uses Hugging Face 🤗 datasets for fine tuning.
+- **Dependencies**: uses Hugging Face 🤗's `tokenizers` instead of tiktoken.
+- **Secutity**: tensor imports and exports use `safetensors` instead of `pickle`.
 
 ## Overview
 
@@ -72,6 +73,15 @@ or to train on fewer epochs.
 | **n_epochs** | 3 |
 | **batch_size** | 20 |
 | **AdamW learning rate** | 0.001 |
+
+
+| Block | Fine Tuned ? |
+|:-----:|:---------:|
+| **Last Transformer Block** | Yes |
+| **Final Norm** | Yes |
+| **Output Head** | Yes |
+
+
 
 
 ##### Training Set
