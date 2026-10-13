@@ -1,9 +1,7 @@
 import json
 import logging
-import socket
 import time
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -106,31 +104,6 @@ class FineTuningLogs:
 TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
 
 
-def make_trace_handler(profile_dir: Path):
-    profile_dir.mkdir(parents=True, exist_ok=True)
-
-    def trace_handler(prof: torch.profiler.profile) -> None:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        hostname = socket.gethostname()
-        prefix = f"{hostname}_{timestamp}"
-
-        # CPU and GPU operator trace, suitable for Chrome/Perfetto.
-        trace_path = profile_dir / f"{prefix}_trace.json.gz"
-        prof.export_chrome_trace(str(trace_path))
-
-        # Memory allocation timeline, including an HTML visualization.
-        if torch.cuda.is_available():
-            memory_path = profile_dir / f"{prefix}_memory.html"
-            prof.export_memory_timeline(
-                str(memory_path),
-                device="cuda:0",
-            )
-
-        LOGGER.info("Profiler trace saved to %s", trace_path)
-
-    return trace_handler
-
-
 def train_classifier(
     model: GPTModel,
     optimizer: torch.optim.Optimizer,
@@ -153,98 +126,74 @@ def train_classifier(
     device = torch.device(device)
     is_cuda = device.type == "cuda"
 
-    # Profile CUDA only when training on a CUDA device.
-    activities = [torch.profiler.ProfilerActivity.CPU]
-
     if is_cuda:
-        activities.append(torch.profiler.ProfilerActivity.CUDA)
-
-        # Synchronize pending CUDA work before measuring elapsed time.
         torch.cuda.synchronize(device)
 
     start_time = time.perf_counter()
 
-    # Profiling is optional.
-    profiler = None
-
-    if profile_dir is not None:
-        profiler = torch.profiler.profile(
-            activities=activities,
-            schedule=torch.profiler.schedule(
-                wait=2,
-                warmup=5,
-                active=profile_steps,
-                repeat=1,
-            ),
-            record_shapes=True,
-            profile_memory=True,
-            with_stack=True,
-            on_trace_ready=make_trace_handler(profile_dir),
-        )
+    # Enable CUDA memory history tracking with full stack traces
+    if is_cuda and profile_dir is not None:
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        torch.cuda.memory._record_memory_history(enabled="all")
 
     try:
-        if profiler is None:
-            # Use a null context when profiling is disabled.
-            from contextlib import nullcontext
+        for epoch in range(n_epochs):
+            LOGGER.info("Epoch %d out of %d.", epoch + 1, n_epochs)
 
-            profiler_context = nullcontext()
-        else:
-            profiler_context = profiler
+            model.train()
 
-        with profiler_context as prof:
-            for epoch in range(n_epochs):
-                LOGGER.info("Epoch %d out of %d.", epoch + 1, n_epochs)
+            for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
+                LOGGER.info("Batch %d out of %d", i, total_batches)
 
-                model.train()
+                optimizer.zero_grad()
 
-                for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
-                    LOGGER.info("Batch %d out of %d", i, total_batches)
+                with record_function("forward_and_loss"):
+                    loss = compute_loss_batch(
+                        input_batch,
+                        target_batch,
+                        model,
+                        device,
+                    )
 
-                    optimizer.zero_grad()
+                with record_function("backward"):
+                    loss.backward()
 
-                    with record_function("forward_and_loss"):
-                        loss = compute_loss_batch(
-                            input_batch,
-                            target_batch,
-                            model,
-                            device,
-                        )
+                with record_function("optimizer_step"):
+                    optimizer.step()
 
-                    with record_function("backward"):
-                        loss.backward()
+                global_step = epoch * total_batches + i
 
-                    with record_function("optimizer_step"):
-                        optimizer.step()
+                if is_cuda and profile_dir is not None and global_step == profile_steps:
+                    snapshot_path = profile_dir / "memory_snapshot.pickle"
+                    torch.cuda.memory._dump_snapshot(str(snapshot_path))
+                    torch.cuda.memory._record_memory_history(enabled=None)
+                    LOGGER.info("CUDA memory snapshot saved to %s", snapshot_path)
 
-                    global_step = epoch * total_batches + i
+                if global_step % eval_freq == 0:
+                    train_loss, validation_loss = evaluate_model(
+                        model,
+                        train_loader,
+                        validation_loader,
+                        device,
+                        num_batches=max_batches_eval,
+                    )
 
-                    # Mark the completion of this training iteration.
-                    if profiler is not None:
-                        prof.step()
+                    LOGGER.info(
+                        "Train Loss: %s, Validation Loss: %s.",
+                        train_loss,
+                        validation_loss,
+                    )
 
-                    # Evaluation is deliberately outside the profiled
-                    # training steps when using the configuration below.
-                    if global_step % eval_freq == 0:
-                        train_loss, validation_loss = evaluate_model(
-                            model,
-                            train_loader,
-                            validation_loader,
-                            device,
-                            num_batches=max_batches_eval,
-                        )
-
-                        LOGGER.info(
-                            "Train Loss: %s, Validation Loss: %s.",
-                            train_loss,
-                            validation_loss,
-                        )
-
-                        train_losses.append(train_loss)
-                        validation_losses.append(validation_loss)
+                    train_losses.append(train_loss)
+                    validation_losses.append(validation_loss)
 
     finally:
-        # Exiting the context finalizes the profiler and its trace.
-        pass
+        # Ensure history recording is cleanly disabled if it hasn't been already
+        if is_cuda and profile_dir is not None:
+            try:
+                torch.cuda.memory._record_memory_history(enabled=None)
+            except Exception:
+                pass
 
     if is_cuda:
         torch.cuda.synchronize(device)
@@ -281,12 +230,7 @@ def pipeline(
 
     dataloader_split = dataloader_factory.create()
 
-    profile_dir = None
-
-    if profile:
-        profile_dir = (
-            export_path / "profiler" if export_path is not None else Path("profiler")
-        )
+    profile_dir = export_path / "profiler" if profile and export_path else None
 
     losses, training_time = train_classifier(
         model,
@@ -315,17 +259,11 @@ def pipeline(
     if export_path:
         export_path.mkdir(parents=True, exist_ok=True)
 
-        finetuning_logs.plot(
-            path=export_path / "losses_curve.png",
-            show=plot_losses,
-        )
+        finetuning_logs.plot(path=export_path / "losses_curve.png", show=plot_losses)
         finetuning_logs.save_run_metadata(export_path)
 
         if checkpoint_name:
-            save_model(
-                model,
-                str(export_path / f"{checkpoint_name}.safetensors"),
-            )
+            save_model(model, str(export_path / f"{checkpoint_name}.safetensors"))
 
     return finetuning_logs
 
