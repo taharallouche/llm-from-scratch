@@ -36,6 +36,15 @@ def pretrained_gpt_124M() -> GPTModel:
     return model
 
 
+def pretrained_gpt_774M() -> GPTModel:
+    config = GPTConfig(
+        drop_rate=0.0, qkv_bias=True, emb_dim=1280, n_layers=36, n_heads=20
+    )
+    model = GPTModel(config=config)
+    model.load_state_dict(load_checkpoint("gpt2-large-774M.safetensors"))
+    return model
+
+
 if __name__ == "__main__":
     from tokenizers import Tokenizer
 
@@ -46,17 +55,16 @@ if __name__ == "__main__":
     text = "I believe I can"
     token_ids = text_to_token_ids(text, tokenizer=tokenizer)
 
-    GPT_124M = pretrained_gpt_124M()
+    GPT_774M = pretrained_gpt_774M()
 
-    GPT_124M.eval()
-    output_ids = GPT_124M(token_ids)
+    GPT_774M.eval()
 
     output = generate(
-        model=GPT_124M,
+        model=GPT_774M,
         token_ids=token_ids,
         max_new_tokens=100,
         eos_token_id=50256,
-        top_k=100,
+        top_k=10,
         temperature=0.8,
     )
     print(token_ids_to_text(output, tokenizer=tokenizer))

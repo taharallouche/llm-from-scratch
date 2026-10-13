@@ -16,7 +16,7 @@ from llm.fine_tuning.classification.classifier import (
     setup_binary_classification_fine_tuning,
 )
 from llm.fine_tuning.classification.evaluate import compute_loss_batch, evaluate_model
-from llm.fine_tuning.pretrained import pretrained_gpt_124M
+from llm.fine_tuning.pretrained import pretrained_gpt_774M
 from llm.gpt import GPTModel
 from llm.io.hugging_face_datasets.base import HFDataLoaderFactory
 from llm.io.hugging_face_datasets.movie_reviews import (
@@ -272,7 +272,7 @@ if __name__ == "__main__":
     )
 
     model = setup_binary_classification_fine_tuning(
-        pretrained_gpt_124M(),
+        pretrained_gpt_774M(),
         trf_blocks_layer="trf_blocks",
         final_norm_layer="final_norm",
     )
@@ -283,7 +283,7 @@ if __name__ == "__main__":
 
     finetuning_logs = pipeline(
         model=model,
-        n_epochs=3,
+        n_epochs=1,
         eval_freq=50,
         max_batches_eval=50,
         dataloader_factory=MovieReviewsDataLoaderFactory(
@@ -291,8 +291,8 @@ if __name__ == "__main__":
             batch_size=20,
             max_length=model.config.context_length,
         ),
-        checkpoint_name="movie_reviews_gpu",
-        export_path=experiments_path() / "movie_reviews_gpu",
+        checkpoint_name="movie_reviews_cpu_gpt_large",
+        export_path=experiments_path() / "movie_reviews_cpu_gpt_large",
         device=device,
         profile=True,
         profile_steps=5,
