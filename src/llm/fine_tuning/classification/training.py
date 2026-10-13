@@ -1,13 +1,16 @@
 import json
 import logging
+import socket
 import time
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import torch
 from safetensors.torch import save_model
 from tokenizers import Tokenizer
+from torch.autograd.profiler import record_function
 from torch.utils.data import DataLoader
 
 from llm.config import GPTConfig
@@ -100,6 +103,24 @@ class FineTuningLogs:
         plt.close()
 
 
+TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+
+
+def trace_handler(prof: torch.profiler.profile):
+    # Prefix for file names.
+    host_name = socket.gethostname()
+    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
+    file_prefix = f"{host_name}_{timestamp}"
+
+    # Construct the trace file.
+    prof.export_chrome_trace(f"{file_prefix}.json.gz")
+
+    # Construct the memory timeline file.
+    prof.export_memory_timeline(
+        f"/kaggle/working/profile.html{file_prefix}.html", device="cuda:0"
+    )
+
+
 def train_classifier(
     model: GPTModel,
     optimizer: torch.optim.Optimizer,
@@ -118,38 +139,54 @@ def train_classifier(
     validation_losses = []
 
     start_time = time.perf_counter()
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(wait=0, warmup=0, active=6, repeat=1),
+        record_shapes=True,
+        profile_memory=True,
+        with_stack=True,
+        on_trace_ready=trace_handler,
+    ) as prof:
+        for epoch in range(n_epochs):
+            LOGGER.info(f"Epoch {epoch + 1} out of {n_epochs}.")
+            for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
+                prof.step()
+                with record_function("## forward ##"):
+                    model.train()
 
-    for epoch in range(n_epochs):
-        LOGGER.info(f"Epoch {epoch + 1} out of {n_epochs}.")
-        for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
-            model.train()
-            LOGGER.info(f"Batch {i} out of {total_batches}")
-            optimizer.zero_grad()
-            loss = compute_loss_batch(
-                input_batch,
-                target_batch,
-                model,
-                device,
-            )
+                LOGGER.info(f"Batch {i} out of {total_batches}")
+                optimizer.zero_grad()
 
-            loss.backward()
+                with record_function("## backward ##"):
+                    loss = compute_loss_batch(
+                        input_batch,
+                        target_batch,
+                        model,
+                        device,
+                    )
 
-            optimizer.step()
+                    loss.backward()
 
-            if (epoch * total_batches + i) % eval_freq == 0:
-                train_loss, validation_loss = evaluate_model(
-                    model,
-                    train_loader,
-                    validation_loader,
-                    device,
-                    num_batches=max_batches_eval,
-                )
-                LOGGER.info(
-                    f"Train Loss: {train_loss}, Validation Loss: {validation_loss}."
-                )
+                with record_function("## optimizer ##"):
+                    optimizer.step()
 
-                train_losses.append(train_loss)
-                validation_losses.append(validation_loss)
+                if (epoch * total_batches + i) % eval_freq == 0:
+                    train_loss, validation_loss = evaluate_model(
+                        model,
+                        train_loader,
+                        validation_loader,
+                        device,
+                        num_batches=max_batches_eval,
+                    )
+                    LOGGER.info(
+                        f"Train Loss: {train_loss}, Validation Loss: {validation_loss}."
+                    )
+
+                    train_losses.append(train_loss)
+                    validation_losses.append(validation_loss)
 
     LOGGER.info("Fine-tuning complete !")
 
@@ -233,7 +270,7 @@ if __name__ == "__main__":
     finetuning_logs = pipeline(
         model=model,
         n_epochs=3,
-        eval_freq=50,
+        eval_freq=5000000000000,
         max_batches_eval=50,
         dataloader_factory=MovieReviewsDataLoaderFactory(
             tokenizer=Tokenizer.from_pretrained("gpt2"),
