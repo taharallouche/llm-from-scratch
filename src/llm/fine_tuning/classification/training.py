@@ -286,7 +286,7 @@ if __name__ == "__main__":
 
     finetuning_logs = pipeline(
         model=model,
-        n_epochs=3,
+        n_epochs=1,
         eval_freq=5000000000000,
         max_batches_eval=50,
         dataloader_factory=MovieReviewsDataLoaderFactory(
@@ -298,7 +298,7 @@ if __name__ == "__main__":
         export_path=experiments_path() / "movie_reviews_gpu",
         device=device,
         profile=True,
-        profile_steps=15,
+        profile_steps=5,
     )
 
     print("training time in s", finetuning_logs.training_time)
