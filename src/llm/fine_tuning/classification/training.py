@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 import torch
 from safetensors.torch import save_model
 from tokenizers import Tokenizer
+from torch.autograd.profiler import record_function
 from torch.utils.data import DataLoader
 
-from llm.config import GPTConfig
 from llm.device import get_device
 from llm.fine_tuning.classification.classifier import (
     setup_binary_classification_fine_tuning,
@@ -100,6 +100,9 @@ class FineTuningLogs:
         plt.close()
 
 
+TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+
+
 def train_classifier(
     model: GPTModel,
     optimizer: torch.optim.Optimizer,
@@ -109,6 +112,8 @@ def train_classifier(
     eval_freq: int,
     max_batches_eval: int | None = None,
     device: str | torch.device = "cpu",
+    profile_dir: Path | None = None,
+    profile_steps: int = 6,
 ) -> tuple[FineTuningLosses, float]:
     model.to(device)
 
@@ -117,51 +122,90 @@ def train_classifier(
     train_losses = []
     validation_losses = []
 
+    device = torch.device(device)
+    is_cuda = device.type == "cuda"
+
+    if is_cuda:
+        torch.cuda.synchronize(device)
+
     start_time = time.perf_counter()
 
-    for epoch in range(n_epochs):
-        LOGGER.info(f"Epoch {epoch + 1} out of {n_epochs}.")
-        for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
+    if is_cuda and profile_dir is not None:
+        profile_dir.mkdir(parents=True, exist_ok=True)
+        torch.cuda.memory._record_memory_history(enabled="all")
+
+    try:
+        for epoch in range(n_epochs):
+            LOGGER.info("Epoch %d out of %d.", epoch + 1, n_epochs)
+
             model.train()
-            LOGGER.info(f"Batch {i} out of {total_batches}")
-            optimizer.zero_grad()
-            loss = compute_loss_batch(
-                input_batch,
-                target_batch,
-                model,
-                device,
-            )
 
-            loss.backward()
+            for i, (input_batch, target_batch) in enumerate(train_loader, start=1):
+                LOGGER.info("Batch %d out of %d", i, total_batches)
 
-            optimizer.step()
+                optimizer.zero_grad()
 
-            if (epoch * total_batches + i) % eval_freq == 0:
-                train_loss, validation_loss = evaluate_model(
-                    model,
-                    train_loader,
-                    validation_loader,
-                    device,
-                    num_batches=max_batches_eval,
-                )
-                LOGGER.info(
-                    f"Train Loss: {train_loss}, Validation Loss: {validation_loss}."
-                )
+                with record_function("forward_and_loss"):
+                    loss = compute_loss_batch(
+                        input_batch,
+                        target_batch,
+                        model,
+                        device,
+                    )
 
-                train_losses.append(train_loss)
-                validation_losses.append(validation_loss)
+                with record_function("backward"):
+                    loss.backward()
 
-    LOGGER.info("Fine-tuning complete !")
+                with record_function("optimizer_step"):
+                    optimizer.step()
 
-    if str(device).startswith("cuda"):
-        torch.cuda.synchronize()
+                global_step = epoch * total_batches + i
 
-    end_time = time.perf_counter()
-    elapsed_seconds = end_time - start_time
+                if is_cuda and profile_dir is not None and global_step == profile_steps:
+                    snapshot_path = profile_dir / "memory_snapshot.pickle"
+                    torch.cuda.memory._dump_snapshot(str(snapshot_path))
+                    torch.cuda.memory._record_memory_history(enabled=None)
+                    LOGGER.info("CUDA memory snapshot saved to %s", snapshot_path)
 
-    return FineTuningLosses(
-        train=train_losses, validation=validation_losses
-    ), elapsed_seconds
+                if global_step % eval_freq == 0:
+                    train_loss, validation_loss = evaluate_model(
+                        model,
+                        train_loader,
+                        validation_loader,
+                        device,
+                        num_batches=max_batches_eval,
+                    )
+
+                    LOGGER.info(
+                        "Train Loss: %s, Validation Loss: %s.",
+                        train_loss,
+                        validation_loss,
+                    )
+
+                    train_losses.append(train_loss)
+                    validation_losses.append(validation_loss)
+
+    finally:
+        if is_cuda and profile_dir is not None:
+            try:
+                torch.cuda.memory._record_memory_history(enabled=None)
+            except Exception:
+                pass
+
+    if is_cuda:
+        torch.cuda.synchronize(device)
+
+    elapsed_seconds = time.perf_counter() - start_time
+
+    LOGGER.info("Fine-tuning complete!")
+
+    return (
+        FineTuningLosses(
+            train=train_losses,
+            validation=validation_losses,
+        ),
+        elapsed_seconds,
+    )
 
 
 def pipeline(
@@ -174,12 +218,16 @@ def pipeline(
     device: str | torch.device = "cpu",
     plot_losses: bool = False,
     export_path: Path | None = None,
+    profile: bool = False,
+    profile_steps: int = 6,
 ) -> FineTuningLogs:
 
     learning_rate = 0.001
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate)
 
     dataloader_split = dataloader_factory.create()
+
+    profile_dir = export_path / "profiler" if profile and export_path else None
 
     losses, training_time = train_classifier(
         model,
@@ -190,6 +238,8 @@ def pipeline(
         eval_freq=eval_freq,
         max_batches_eval=max_batches_eval,
         device=device,
+        profile_dir=profile_dir,
+        profile_steps=profile_steps,
     )
 
     finetuning_logs = FineTuningLogs(
@@ -205,7 +255,8 @@ def pipeline(
 
     if export_path:
         export_path.mkdir(parents=True, exist_ok=True)
-        finetuning_logs.plot(path=export_path / "losses_curve", show=plot_losses)
+
+        finetuning_logs.plot(path=export_path / "losses_curve.png", show=plot_losses)
         finetuning_logs.save_run_metadata(export_path)
 
         if checkpoint_name:
@@ -238,11 +289,13 @@ if __name__ == "__main__":
         dataloader_factory=MovieReviewsDataLoaderFactory(
             tokenizer=Tokenizer.from_pretrained("gpt2"),
             batch_size=20,
-            max_length=GPTConfig().context_length,
+            max_length=model.config.context_length,
         ),
         checkpoint_name="movie_reviews_gpu",
         export_path=experiments_path() / "movie_reviews_gpu",
         device=device,
+        profile=True,
+        profile_steps=5,
     )
 
     print("training time in s", finetuning_logs.training_time)

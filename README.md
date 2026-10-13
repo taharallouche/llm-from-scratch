@@ -96,6 +96,16 @@ or to train on fewer epochs.
 | **CPU** | 50m 14s |
 
 
+##### Memory profiling
+
+This is the snapshot of memory profiling of the first three batches:
+- After the first bump, we can see that there is a constant layer that is added. It corresponds to `AdamW`'s state.
+- On each batch, we can see the memory grows when activations are computed, then gradients are added. The memory then drops again
+as activations that are no longer needed for any gradient are freed, then gradients themselves are freed.
+- The spikes in between are typically due to the manual python level implementation of the module's tensor operations.
+
+![alt text](image.png)
+
 
 ##### Training Set Metrics
 
