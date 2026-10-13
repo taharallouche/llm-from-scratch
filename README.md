@@ -104,7 +104,8 @@ This is the snapshot of memory profiling of the first three batches:
 as activations that are no longer needed for any gradient are freed, then gradients themselves are freed.
 - The spikes in between are typically due to the manual python level implementation of the module's tensor operations.
 
-![alt text](image.png)
+<img width="1719" height="444" alt="image" src="https://github.com/user-attachments/assets/f1befc73-f44c-4e8e-a935-7a7c925c897f" />
+
 
 
 ##### Training Set Metrics
