@@ -1,9 +1,9 @@
 # GPT-2 From Scratch (and Beyond)
 
-[CI](https://github.com/taharallouche/llm-from-scratch/actions/workflows/ci.yml)  
-Python  
-uv  
-PyTorch
+[![CI](https://github.com/taharallouche/llm-from-scratch/actions/workflows/ci.yml/badge.svg)](https://github.com/taharallouche/llm-from-scratch/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&logoColor=white)
+![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
 
 Implementing GPT-2 from scratch following Build Large Language Model from Scratch \[1\] by Sebastien Raschka. No coding assistant has been used during the exercise: it's more instructive and way more fun done this way !
 
@@ -208,8 +208,9 @@ Hugging Face's `GPT2ForSequenceClassification` as a baseline.
 
 ##### Memory profiling
 
+<img width="1790" height="410" alt="image" src="https://github.com/user-attachments/assets/799581d4-30b1-48ef-adc6-48a9921f3e19" />
 
-
+Interestingly, the Hugging Face implementation consumes more memory compared to my implementation. This needs to be investigated.
 
 
 ##### Training Set Metrics
