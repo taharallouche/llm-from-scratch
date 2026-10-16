@@ -5,14 +5,15 @@
 ![uv](https://img.shields.io/badge/uv-managed-DE5FE9?logo=uv&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?logo=pytorch&logoColor=white)
 
-Implementing GPT-2 from scratch following Build Large Language Model from Scratch [1] by Sebastien Raschka. No coding assistant has been used during the exercise: it's more instructive and way more fun done this way !
+Implementing GPT-2 from scratch following Build Large Language Model from Scratch \[1\] by Sebastien Raschka. No coding assistant has been used during the exercise: it's more instructive and way more fun done this way !
 
 The repo goes beyond the book on these aspects:
+
 - **Code design**: modular, type-annotated, more object oriented at places, and (partially 👀) tested.
 - **Datasets**: as detailed below, uses Hugging Face 🤗 datasets for fine tuning.
 - **Dependencies**: uses Hugging Face 🤗's `tokenizers` instead of tiktoken.
 - **Security**: tensor imports and exports use `safetensors` instead of `pickle`.
-
+- **Benchmarks**: compares fine tuning results to Hugging Face 🤗's `GPT2ForSequenceClassification`
 
 ## Overview
 
@@ -41,128 +42,238 @@ graph TD
 ```
 
 ## Lessons Learned
+
 These are some of the issues that I faced and spent the most time debugging:
-- Although the book implements right-padding, for the classification fine tuning task, left-padding significantly outperformed it.
-This might be related to our methodology that only considers the last logits, which would be the pad token
-in the right-padded shorter sequences.
-- Don't forget to shuffle the training set ! Movies Review dataset stacks all positive reviews together
-followed by the negative reviews. The model learned very fast to always output 1 during the first batches,
+
+- Although the book implements right-padding, for the classification fine tuning task, left-padding significantly outperformed it.  
+This might be related to our methodology that only considers the last logits, which would be the pad token  
+in the right-padded shorter sequences. Another solution, discovered when benchmarking with `GPT2ForSequenceClassification`
+is to use an attention mask (do not confuse with causal mask) so that tokens do not attend to pads.
+- Don't forget to shuffle the training set ! Movies Review dataset stacks all positive reviews together  
+followed by the negative reviews. The model learned very fast to always output 1 during the first batches,  
 then the loss exploded as soon as it encountered the negative batches.
 
 ## Fine-Tuning for Classification: Alternative Dataset and Methodology
 
-
-For this section I deliberately choose to diverge from the book: I will rely on Hugging Face's Open Source
+For this section I deliberately choose to diverge from the book: I will rely on Hugging Face's Open Source  
 datasets:
-- Classification on balanced data: https://huggingface.co/datasets/cornell-movie-review-data/rotten_tomatoes
-- Classification on unbalanced data: https://huggingface.co/datasets/Vidushee/iclr-papers-with-code-1k 
+
+- Classification on balanced data: [https://huggingface.co/datasets/cornell-movie-review-data/rotten\_tomatoes](https://huggingface.co/datasets/cornell-movie-review-data/rotten_tomatoes)
+- Classification on unbalanced data: [https://huggingface.co/datasets/Vidushee/iclr-papers-with-code-1k](https://huggingface.co/datasets/Vidushee/iclr-papers-with-code-1k)
+
+To benchmark the from-scratch implementation, each fine tuning experiment is also compared against  
+Hugging Face's `GPT2ForSequenceClassification` fine tuned on the same data with the same parameters.
+
+### Evaluation Records — Movie Reviews
+
+#### Benchmark Summary
 
 
-### Evaluation Records
+| Metric                     | From-Scratch GPT-2 | Hugging Face `GPT2ForSequenceClassification` |
+| :--------------------------: | :------------------: | :--------------------------------------------: |
+| **GPU (T4) training time** | 150.5 s            | 140.8 s                                      |
+| **CPU training time**      | 50m 14s            | 55m 14s                                      |
+| **Train accuracy**         | 0.93               | 0.87                                         |
+| **Validation accuracy**    | 0.85               | 0.83                                         |
+| **Test accuracy**          | 0.84               | 0.82                                         |
 
-#### Movie Reviews
 
-**Notes**: Comparing the Train, Validation, Test results above, we can see that the model
-can be overfitting to the training set. This is also visible in the train/validation loss gap evolution. 
-It might be interesting to tune the optimizer's weight decay, setup early stopping strategies
+**Notes**: I need to run several fine tuning jobs with different seeds to assert the statistical significance, but
+the models seem to be on par from a first impression, to be confirmed.
+
+#### From-Scratch GPT-2
+
+##### Fine Tuning Configuration
+
+
+| Parameter               | Value |
+| :-----------------------: | :-----: |
+| **n\_epochs**           | 3     |
+| **batch\_size**         | 20    |
+| **AdamW learning rate** | 0.001 |
+
+
+
+| Block                      | Fine Tuned ? |
+| :--------------------------: | :------------: |
+| **Last Transformer Block** | Yes          |
+| **Final Norm**             | Yes          |
+| **Output Head**            | Yes          |
+
+**Notes**: Comparing the Train, Validation, Test results below, we can see that the model  
+can be overfitting to the training set. This is also visible in the train/validation loss gap evolution.  
+It might be interesting to tune the optimizer's weight decay, setup early stopping strategies  
 or to train on fewer epochs.
 
 <img width="500" height="300" alt="image" src="https://github.com/user-attachments/assets/5d6ea8fb-8c9d-486b-9e5e-e45012c2e9bc" />
 
 
-
-##### Fine Tuning Configuration
-
-
-| Parameter | Value |
-|:-----:|:---------:|
-| **n_epochs** | 3 |
-| **batch_size** | 20 |
-| **AdamW learning rate** | 0.001 |
-
-
-| Block | Fine Tuned ? |
-|:-----:|:---------:|
-| **Last Transformer Block** | Yes |
-| **Final Norm** | Yes |
-| **Output Head** | Yes |
-
-
 ##### Resources
 
-| Device | Duration |
-|:-----:|:---------:|
-| **GPU T4** | 150.5 s |
-| **CPU** | 50m 14s |
+
+| Device     | Duration |
+| :----------: | :--------: |
+| **GPU T4** | 150.5 s  |
+| **CPU**    | 50m 14s  |
 
 
 ##### Memory profiling
 
 This is the snapshot of memory profiling of the first three batches:
+
 - After the first bump, we can see that there is a constant layer that is added. It corresponds to `AdamW`'s state.
-- On each batch, we can see the memory grows when activations are computed, then gradients are added. The memory then drops again
+- On each batch, we can see the memory grows when activations are computed, then gradients are added. The memory then drops again  
 as activations that are no longer needed for any gradient are freed, then gradients themselves are freed.
 - The spikes in between are typically due to the manual python level implementation of the module's tensor operations.
 
 <img width="1719" height="444" alt="image" src="https://github.com/user-attachments/assets/f1befc73-f44c-4e8e-a935-7a7c925c897f" />
 
 
-
 ##### Training Set Metrics
 
 
-| Class | Precision | Recall | F1-score | Support |
-|:-----:|:---------:|:------:|:--------:|--------:|
-| 0 | 0.92 | 0.94 | 0.93 | 4,265 |
-| 1 | 0.93 | 0.92 | 0.93 | 4,265 |
-| **Accuracy** | | | **0.93** | **8,530** |
-| **Macro avg** | **0.93** | **0.93** | **0.93** | **8,530** |
-| **Weighted avg** | **0.93** | **0.93** | **0.93** | **8,530** |
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.92      | 0.94     | 0.93     | 4,265     |
+| 1                | 0.93      | 0.92     | 0.93     | 4,265     |
+| **Accuracy**     |           |          | **0.93** | **8,530** |
+| **Macro avg**    | **0.93**  | **0.93** | **0.93** | **8,530** |
+| **Weighted avg** | **0.93**  | **0.93** | **0.93** | **8,530** |
 
 
-|  | Predicted 0 | Predicted 1 |
-|:--|-------------:|-------------:|
-| Actual 0 | 3,992 | 273 |
-| Actual 1 | 357 | 3,908 |
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 3,992       | 273         |
+| Actual 1 | 357         | 3,908       |
+
 
 ---
 
 ##### Validation Set Metrics
 
 
-| Class | Precision | Recall | F1-score | Support |
-|:-----:|:---------:|:------:|:--------:|--------:|
-| 0 | 0.84 | 0.86 | 0.85 | 533 |
-| 1 | 0.86 | 0.83 | 0.85 | 533 |
-| **Accuracy** | | | **0.85** | **1,066** |
-| **Macro avg** | **0.85** | **0.85** | **0.85** | **1,066** |
-| **Weighted avg** | **0.85** | **0.85** | **0.85** | **1,066** |
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.84      | 0.86     | 0.85     | 533       |
+| 1                | 0.86      | 0.83     | 0.85     | 533       |
+| **Accuracy**     |           |          | **0.85** | **1,066** |
+| **Macro avg**    | **0.85**  | **0.85** | **0.85** | **1,066** |
+| **Weighted avg** | **0.85**  | **0.85** | **0.85** | **1,066** |
 
 
-|  | Predicted 0 | Predicted 1 |
-|:--|-------------:|-------------:|
-| Actual 0 | 461 | 72 |
-| Actual 1 | 90 | 443 |
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 461         | 72          |
+| Actual 1 | 90          | 443         |
+
 
 ---
 
 ##### Test Set Metrics
 
 
-| Class | Precision | Recall | F1-score | Support |
-|:-----:|:---------:|:------:|:--------:|--------:|
-| 0 | 0.84 | 0.83 | 0.83 | 533 |
-| 1 | 0.83 | 0.85 | 0.84 | 533 |
-| **Accuracy** | | | **0.84** | **1,066** |
-| **Macro avg** | **0.84** | **0.84** | **0.84** | **1,066** |
-| **Weighted avg** | **0.84** | **0.84** | **0.84** | **1,066** |
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.84      | 0.83     | 0.83     | 533       |
+| 1                | 0.83      | 0.85     | 0.84     | 533       |
+| **Accuracy**     |           |          | **0.84** | **1,066** |
+| **Macro avg**    | **0.84**  | **0.84** | **0.84** | **1,066** |
+| **Weighted avg** | **0.84**  | **0.84** | **0.84** | **1,066** |
 
 
-|  | Predicted 0 | Predicted 1 |
-|:--|-------------:|-------------:|
-| Actual 0 | 440 | 93 |
-| Actual 1 | 82 | 451 |
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 440         | 93          |
+| Actual 1 | 82          | 451         |
+
+
+#### Hugging Face `GPT2ForSequenceClassification`
+
+Same dataset and same fine tuning parameters as the from-scratch model above, this time with  
+Hugging Face's `GPT2ForSequenceClassification` as a baseline.
+
+
+
+##### Resources
+
+
+| Device     | Duration |
+| :----------: | :--------: |
+| **GPU T4** | 140.8 s  |
+| **CPU**    | 55m 14s  |
+
+
+##### Memory profiling
+
+<img width="1790" height="410" alt="image" src="https://github.com/user-attachments/assets/799581d4-30b1-48ef-adc6-48a9921f3e19" />
+
+Interestingly, the Hugging Face implementation consumes more memory compared to my implementation. This needs to be investigated.
+
+
+##### Training Set Metrics
+
+
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.87      | 0.88     | 0.87     | 4,265     |
+| 1                | 0.88      | 0.86     | 0.87     | 4,265     |
+| **Accuracy**     |           |          | **0.87** | **8,530** |
+| **Macro avg**    | **0.87**  | **0.87** | **0.87** | **8,530** |
+| **Weighted avg** | **0.87**  | **0.87** | **0.87** | **8,530** |
+
+
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 3,741       | 524         |
+| Actual 1 | 579         | 3,686       |
+
+
+---
+
+##### Validation Set Metrics
+
+
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.84      | 0.82     | 0.83     | 533       |
+| 1                | 0.83      | 0.84     | 0.83     | 533       |
+| **Accuracy**     |           |          | **0.83** | **1,066** |
+| **Macro avg**    | **0.83**  | **0.83** | **0.83** | **1,066** |
+| **Weighted avg** | **0.83**  | **0.83** | **0.83** | **1,066** |
+
+
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 439         | 94          |
+| Actual 1 | 85          | 448         |
+
+
+---
+
+##### Test Set Metrics
+
+
+| Class            | Precision | Recall   | F1-score | Support   |
+| :----------------: | :---------: | :--------: | :--------: | ---------: |
+| 0                | 0.82      | 0.84     | 0.83     | 533       |
+| 1                | 0.83      | 0.81     | 0.82     | 533       |
+| **Accuracy**     |           |          | **0.82** | **1,066** |
+| **Macro avg**    | **0.82**  | **0.82** | **0.82** | **1,066** |
+| **Weighted avg** | **0.82**  | **0.82** | **0.82** | **1,066** |
+
+
+
+|          | Predicted 0 | Predicted 1 |
+| :-------- | -----------: | -----------: |
+| Actual 0 | 446         | 87          |
+| Actual 1 | 101         | 432         |
+
 
 ## References
 
-[1] Raschka, S. (2024). *Build a Large Language Model (From Scratch)*. Manning Publications.
+\[1\] Raschka, S. (2024). *Build a Large Language Model (From Scratch)*. Manning Publications.

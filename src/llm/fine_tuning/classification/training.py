@@ -1,10 +1,7 @@
-import json
 import logging
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import torch
 from safetensors.torch import save_model
 from tokenizers import Tokenizer
@@ -16,6 +13,10 @@ from llm.fine_tuning.classification.classifier import (
     setup_binary_classification_fine_tuning,
 )
 from llm.fine_tuning.classification.evaluate import compute_loss_batch, evaluate_model
+from llm.fine_tuning.classification.training_logs import (
+    FineTuningLogs,
+    FineTuningLosses,
+)
 from llm.fine_tuning.pretrained import pretrained_gpt_124M
 from llm.gpt import GPTModel
 from llm.io.hugging_face_datasets.base import HFDataLoaderFactory
@@ -27,79 +28,6 @@ from llm.io.utils import experiments_path
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True)
-class FineTuningLosses:
-    train: list[float]
-    validation: list[float]
-
-
-@dataclass(frozen=True)
-class FineTuningLogs:
-    n_epochs: int
-    batch_size: int
-    max_batches_eval: int | None
-    eval_freq: int
-    learning_rate: float
-    checkpoint_name: str
-    training_time: float
-
-    losses: FineTuningLosses
-
-    def save_run_metadata(self, folder: Path) -> None:
-        file_path = folder / "run_metadata.json"
-        file_path.touch()
-
-        with open(file_path, mode="w+") as f:
-            json.dump(
-                {
-                    "checkpoint_name": self.checkpoint_name,
-                    "n_epochs": self.n_epochs,
-                    "batch_size": self.batch_size,
-                    "max_batches_eval": self.max_batches_eval,
-                    "eval_freq": self.eval_freq,
-                    "learning_rate": self.learning_rate,
-                    "training_time": self.training_time,
-                },
-                f,
-            )
-
-    def plot(self, path: Path | None = None, show: bool = False) -> None:
-        steps = [(i + 1) * self.eval_freq for i in range(len(self.losses.train))]
-
-        plt.figure(figsize=(8, 5))
-        plt.plot(
-            steps, self.losses.train, label="Train Loss", marker="o", linestyle="-"
-        )
-        plt.plot(
-            steps,
-            self.losses.validation,
-            label="Validation Loss",
-            marker="x",
-            linestyle="--",
-        )
-
-        plt.xlabel("Batch / Step")
-        plt.ylabel("Loss")
-
-        if self.checkpoint_name != "":
-            plt.title(f"Fine-Tuning Loss - Checkpoint: {self.checkpoint_name}")
-        else:
-            plt.title("Fine-Tuning Loss")
-
-        plt.legend()
-        plt.grid(True, linestyle=":", alpha=0.7)
-        plt.tight_layout()
-
-        if path is not None:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            plt.savefig(path, dpi=300, bbox_inches="tight")
-
-        if show:
-            plt.show()
-
-        plt.close()
-
-
 TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
 
 
@@ -109,7 +37,7 @@ def train_classifier(
     train_loader: DataLoader,
     validation_loader: DataLoader,
     n_epochs: int,
-    eval_freq: int,
+    eval_freq: int | None = None,
     max_batches_eval: int | None = None,
     device: str | torch.device = "cpu",
     profile_dir: Path | None = None,
@@ -167,7 +95,7 @@ def train_classifier(
                     torch.cuda.memory._record_memory_history(enabled=None)
                     LOGGER.info("CUDA memory snapshot saved to %s", snapshot_path)
 
-                if global_step % eval_freq == 0:
+                if eval_freq and global_step % eval_freq == 0:
                     train_loss, validation_loss = evaluate_model(
                         model,
                         train_loader,
@@ -212,7 +140,7 @@ def pipeline(
     model: GPTModel,
     dataloader_factory: HFDataLoaderFactory,
     n_epochs: int,
-    eval_freq: int,
+    eval_freq: int | None = None,
     max_batches_eval: int | None = None,
     checkpoint_name: str | None = None,
     device: str | torch.device = "cpu",
