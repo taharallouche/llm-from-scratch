@@ -8,11 +8,10 @@ from safetensors.torch import load_model
 from sklearn.metrics import classification_report, confusion_matrix
 from tokenizers import Tokenizer
 from torch.utils.data import DataLoader
+from transformers import GPT2ForSequenceClassification
+from transformers.modeling_outputs import SequenceClassifierOutputWithPast
 
-from llm.config import GPTConfig
-from llm.fine_tuning.classification.classifier import (
-    setup_binary_classification_model,
-)
+from llm.fine_tuning.classification.hugging_face import setup_model
 from llm.gpt import GPTModel
 from llm.io.hugging_face_datasets.movie_reviews import MovieReviewsDataLoaderFactory
 from llm.io.utils import experiments_path
@@ -68,7 +67,7 @@ def evaluate_model(
     val_loader: DataLoader,
     device,
     num_batches: int | None,
-):
+) -> tuple[float, float]:
     model.eval()
     with torch.no_grad():
         train_loss = compute_loss(
@@ -83,7 +82,7 @@ def evaluate_model(
 
 def get_predictions_and_targets(
     dataloader: DataLoader,
-    model: GPTModel,
+    model: GPTModel | GPT2ForSequenceClassification,
     device: str | torch.device = "cpu",
     num_batches=None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -94,8 +93,12 @@ def get_predictions_and_targets(
 
     with torch.no_grad():
         for i, (input_batch, target_batch) in enumerate(dataloader):
-            logits = model(input_batch.to(device))
-            predictions.extend(logits[:, -1].argmax(dim=-1).cpu())
+            if isinstance(model, GPTModel):
+                logits = model(input_batch.to(device))[:, -1]
+            elif isinstance(model, GPT2ForSequenceClassification):
+                output: SequenceClassifierOutputWithPast = model(input_batch.to(device))
+                logits = output.logits
+            predictions.extend(logits.argmax(dim=-1).cpu())
             targets.extend(target_batch.reshape(-1).cpu())
 
             if num_batches is not None and i + 1 >= num_batches:
@@ -177,12 +180,17 @@ class EvaluationReport:
 
 
 if __name__ == "__main__":
-    model = setup_binary_classification_model(
-        model=GPTModel(GPTConfig(drop_rate=0.0, qkv_bias=True)),
-    )
+    # model = setup_binary_classification_model(
+    #     model=GPTModel(GPTConfig(drop_rate=0.0, qkv_bias=True)),
+    # )
+
+    model = setup_model()
 
     load_model(
-        model, experiments_path() / "movie_reviews" / "movie_reviews.safetensors"
+        model,
+        experiments_path()
+        / "movie_reviews_hf_gpu_no_eval"
+        / "movie_reviews_hf_gpu_no_eval.safetensors",
     )
 
     loaders = MovieReviewsDataLoaderFactory(
